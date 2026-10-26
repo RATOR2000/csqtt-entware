@@ -2312,6 +2312,52 @@ mod tests {
 
         dispatcher.shutdown().await;
     }
+
+    #[tokio::test]
+    async fn fixed_udp_rejects_port_collision_without_selecting_another_port() {
+        let occupied=UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let peer=UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let result=Dispatcher::start_fixed_udp(occupied.local_addr().unwrap(),peer.local_addr().unwrap(),
+            PacketPool::new(8),Arc::new(Stats::default()),CancellationToken::new()).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn fixed_udp_accepts_only_configured_peer_and_returns_before_first_input() {
+        let peer=UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let intruder=UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let reserved=std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
+        let listen=reserved.local_addr().unwrap(); drop(reserved);
+        let pool=PacketPool::new(32);
+        let stats=Arc::new(Stats::default());
+        let (dispatcher,port)=Dispatcher::start_fixed_udp(listen,peer.local_addr().unwrap(),
+            pool.clone(),stats.clone(),CancellationToken::new()).await.unwrap();
+        assert_eq!(port,listen.port().to_string());
+        let (worker,received,_priority,_bulk)=channels(0,8); dispatcher.register(worker);
+
+        // The output destination is configured, not learned from inbound data.
+        let mut packet=pool.acquire(); packet.set_read_len(1).unwrap(); packet.as_mut_slice()[0]=0x88;
+        dispatcher.return_packet(packet);
+        let mut buffer=[0u8;16];
+        let (length,source)=tokio::time::timeout(Duration::from_secs(1),peer.recv_from(&mut buffer)).await.unwrap().unwrap();
+        assert_eq!(source,listen); assert_eq!(&buffer[..length],&[0x88]);
+
+        intruder.send_to(&[0x99],listen).await.unwrap();
+        peer.send_to(&[0x77],listen).await.unwrap();
+        let cancel=CancellationToken::new();
+        let packet=tokio::time::timeout(Duration::from_secs(1),received.recv(&cancel)).await.unwrap().unwrap();
+        assert_eq!(packet.as_slice(),&[0x77]); drop(packet);
+        assert!(tokio::time::timeout(Duration::from_millis(40),received.recv(&cancel)).await.is_err());
+        assert_eq!(stats.total_bytes_up.load(Ordering::Relaxed),1);
+
+        // A rejected local sender can neither inject nor redirect return data.
+        let mut packet=pool.acquire(); packet.set_read_len(1).unwrap(); packet.as_mut_slice()[0]=0x66;
+        dispatcher.return_packet(packet);
+        let (length,source)=tokio::time::timeout(Duration::from_secs(1),peer.recv_from(&mut buffer)).await.unwrap().unwrap();
+        assert_eq!(source,listen); assert_eq!(&buffer[..length],&[0x66]);
+        assert!(tokio::time::timeout(Duration::from_millis(40),intruder.recv_from(&mut buffer)).await.is_err());
+        dispatcher.shutdown().await;
+    }
 }
 
 #[cfg(test)]

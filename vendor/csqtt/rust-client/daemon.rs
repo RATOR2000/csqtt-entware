@@ -406,6 +406,15 @@ pub fn prepare(arguments: &mut crate::Arguments) -> Result<()> {
 }
 
 impl Runtime {
+    async fn accept_tunnel_configuration(&self, ip: Ipv4Addr, dns: Vec<Ipv4Addr>) -> Result<()> {
+        if self.config.packet_adapter == PacketAdapter::Tun {
+            crate::linux_tun::configure(&self.config.tun_device, ip).await?;
+            self.hook("up", Some(ip), &dns).await?;
+        }
+        self.update(|status| { status.tunnel_ip = Some(ip); status.dns = dns; refresh_state(status); });
+        Ok(())
+    }
+
     fn persist(&self) -> Result<()> {
         let status = self.status.lock().unwrap_or_else(|e| e.into_inner());
         write_private(&self.config.status_file, &*status)
@@ -580,11 +589,7 @@ pub fn parse_tunconf(value: &str) -> Result<(Ipv4Addr, Vec<Ipv4Addr>)> {
 pub async fn apply_tunconf(value: &str) -> Result<()> {
     if let Some(runtime) = current() {
         let (ip, dns) = parse_tunconf(value)?;
-        if runtime.config.packet_adapter == PacketAdapter::Tun {
-            crate::linux_tun::configure(&runtime.config.tun_device, ip).await?;
-            runtime.hook("up", Some(ip), &dns).await?;
-        }
-        runtime.update(|status| { status.tunnel_ip = Some(ip); status.dns = dns; refresh_state(status); });
+        runtime.accept_tunnel_configuration(ip, dns).await?;
     }
     Ok(())
 }
@@ -831,13 +836,30 @@ mod tests {
         let mut config=valid(); config.peer="[2001:db8::1]:46000".into(); assert!(config.validate().is_ok());
     }
     #[test]
+    fn packet_endpoints_are_fixed_local_and_distinct() {
+        let config = valid();
+        assert_eq!(config.packet_adapter, PacketAdapter::Udp);
+        assert_eq!(config.packet_listen.to_string(), "127.0.0.1:39000");
+        assert_eq!(config.packet_peer.to_string(), "127.0.0.1:39001");
+        for endpoint in ["0.0.0.0:39000", "192.168.2.1:39000", "127.0.0.2:39000", "[::1]:39000", "127.0.0.1:0"] {
+            let mut value = config.clone(); value.packet_listen = endpoint.parse().unwrap();
+            assert!(value.validate().is_err());
+            let mut value = config.clone(); value.packet_peer = endpoint.parse().unwrap();
+            assert!(value.validate().is_err());
+        }
+        let mut value = config.clone(); value.packet_peer = value.packet_listen;
+        assert!(value.validate().is_err());
+        assert!(serde_json::from_str::<Config>(r#"{"packet_adapter":"auto"}"#).is_err());
+        assert!(serde_json::from_str::<Config>(r#"{"packet_listen":"localhost:39000"}"#).is_err());
+    }
+    #[test]
     fn tunconf_cannot_inject_commands_or_foreign_routes() {
         assert_eq!(parse_tunconf("TUNCONF:10.66.67.2:1.1.1.1,8.8.8.8:0:stream-v2").unwrap().1.len(),2);
         for value in ["TUNCONF:192.168.1.1:1.1.1.1:0", "TUNCONF:10.66.67.0:1.1.1.1:0", "TUNCONF:10.66.67.2:1.1.1.1;reboot:0"] { assert!(parse_tunconf(value).is_err()); }
     }
     #[test]
     fn status_does_not_publish_challenge_credentials() {
-        let mut status=Status { schema_version:1,state:"connecting".into(),pid:1,process_startticks:0,boot_id:String::new(),updated_boottime_ms:0,uptime_secs:0,tun_device:"csqtt0".into(),tunnel_ip:Some(Ipv4Addr::new(10,66,67,2)),dns:vec![],active_workers:0,bytes_up:0,bytes_down:0,captcha:None,error_code:None,updated_at:0,health:Health::default() };
+        let mut status=Status { schema_version:1,generation:7,packet_adapter:PacketAdapter::Udp,state:"connecting".into(),pid:1,process_startticks:0,boot_id:String::new(),updated_boottime_ms:0,uptime_secs:0,tun_device:"csqtt0".into(),tunnel_ip:Some(Ipv4Addr::new(10,66,67,2)),dns:vec![],active_workers:0,bytes_up:0,bytes_down:0,captcha:None,error_code:None,updated_at:0,health:Health::default() };
         refresh_state(&mut status); assert_eq!(status.state,"connecting");
         status.active_workers=1; refresh_state(&mut status); assert_eq!(status.state,"connected");
         status.captcha=Some(json!({"id":"request","state":"manual","expires_at":1}));
@@ -852,6 +874,37 @@ mod tests {
         apply_event(&mut status,"STATS",&json!({"active":3,"bytes_up":1,"bytes_down":1}));
         assert_eq!(status.state,"connected");
         assert!(!serde_json::to_string(&status).unwrap().contains("private-upstream-error"));
+        let public = serde_json::to_value(&status).unwrap();
+        assert_eq!(public["generation"],7);
+        assert_eq!(public["packet_adapter"],"udp");
+        assert!(public.get("device_id").is_none());
+    }
+
+    #[tokio::test]
+    async fn udp_configuration_updates_private_status_without_kernel_tun_or_hook() {
+        let dir=std::env::temp_dir().join(format!("csqtt-udp-status-{}",uuid::Uuid::new_v4()));
+        let mut config=valid(); config.identity_file=dir.join("identity.json");
+        config.status_file=dir.join("status.json");
+        config.tun_config_hook=dir.join("must-never-execute");
+        let (identity,lock)=reserve_identity(&config).unwrap();
+        let runtime=Runtime {
+            status:Mutex::new(Status {schema_version:1,generation:identity.generation,packet_adapter:PacketAdapter::Udp,
+                state:"connecting".into(),pid:std::process::id(),process_startticks:process_startticks(),boot_id:boot_id(),
+                updated_boottime_ms:0,uptime_secs:0,tun_device:"csqtt0".into(),tunnel_ip:None,dns:vec![],active_workers:1,
+                bytes_up:0,bytes_down:0,captcha:None,error_code:None,updated_at:0,health:Health::default()}),
+            config,_identity_lock:lock,hook_lock:tokio::sync::Mutex::new(()),control_owned:AtomicBool::new(false),
+            tun_owned:AtomicBool::new(false),started:std::time::Instant::now(),
+        };
+        runtime.accept_tunnel_configuration(Ipv4Addr::new(10,66,67,2),vec![Ipv4Addr::new(1,1,1,1)]).await.unwrap();
+        let status:Value=serde_json::from_slice(&read_private(&runtime.config.status_file).unwrap()).unwrap();
+        assert_eq!(status["tunnel_ip"],"10.66.67.2");
+        assert_eq!(status["dns"],json!(["1.1.1.1"]));
+        assert_eq!(status["generation"],identity.generation);
+        assert_eq!(status["packet_adapter"],"udp");
+        assert_eq!(status["state"],"connected");
+        assert!(!runtime.tun_owned.load(Ordering::Acquire));
+        drop(runtime);
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[tokio::test]

@@ -1,0 +1,6 @@
+{
+  "cpu": "mips32r2",
+  "features": "+mips32r2,+soft-float",
+  "llvm-floatabi": "soft",
+  "max-atomic-width": 32
+}

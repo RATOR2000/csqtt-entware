@@ -1,0 +1,60 @@
+name: Core ABI and tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  host-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.97.1 --profile minimal
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .work/host-target
+          key: core-host-${{ runner.os }}-${{ hashFiles('vendor/csqtt/rust-client/Cargo.lock') }}
+      - name: Core tests
+        env:
+          RUSTUP_TOOLCHAIN: 1.97.1
+          CARGO_TARGET_DIR: ${{ github.workspace }}/.work/host-target
+          CARGO_BUILD_JOBS: 2
+        run: cargo test --locked --manifest-path vendor/csqtt/rust-client/Cargo.toml
+  mips-core:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools and Rust sources
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y gcc-mipsel-linux-gnu g++-mipsel-linux-gnu binutils-mipsel-linux-gnu qemu-user
+          rustup toolchain install 1.97.1 --profile minimal --component rust-src
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .work/core-build
+          key: core-mips-entware-v1-${{ hashFiles('vendor/csqtt/rust-client/Cargo.lock', 'targets/**', 'scripts/build-core.sh') }}
+      - name: Cross compile and check ABI
+        run: bash scripts/build-core.sh
+      - name: Emulated startup smoke check
+        run: |
+          sysroot="$PWD/.work/core-build/sysroot"
+          qemu-mipsel "$sysroot/opt/lib/ld.so.1" --library-path "$sysroot/opt/lib" .work/core-build/abi-smoke
+          qemu-mipsel "$sysroot/opt/lib/ld.so.1" --library-path "$sysroot/opt/lib" dist/csqtt-core --config-file /nonexistent/csqtt.json 2>.work/core-startup.log && exit 1
+          grep -E 'configuration|config|No such file|os error' .work/core-startup.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: csqtt-core-entware-mipsel
+          path: |
+            dist/csqtt-core
+            dist/csqtt-core.sha256
+          retention-days: 14
