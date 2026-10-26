@@ -1,0 +1,11 @@
+.work/
+dist/
+target/
+*.exe
+*.ipk
+*.log
+__pycache__/
+.env
+private/
+*.key
+config.local.json
