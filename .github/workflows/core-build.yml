@@ -20,6 +20,7 @@ jobs:
             ~/.cargo/git
             .work/host-target
           key: core-host-${{ runner.os }}-${{ hashFiles('vendor/csqtt/rust-client/Cargo.lock') }}
+          restore-keys: core-host-${{ runner.os }}-
       - name: Core tests
         env:
           RUSTUP_TOOLCHAIN: 1.97.1
@@ -43,18 +44,19 @@ jobs:
             ~/.cargo/git
             .work/core-build
           key: core-mips-entware-v1-${{ hashFiles('vendor/csqtt/rust-client/Cargo.lock', 'targets/**', 'scripts/build-core.sh') }}
+          restore-keys: core-mips-entware-v1-
       - name: Cross compile and check ABI
         run: bash scripts/build-core.sh
       - name: Emulated startup smoke check
         run: |
           sysroot="$PWD/.work/core-build/sysroot"
           qemu-mipsel "$sysroot/opt/lib/ld.so.1" --library-path "$sysroot/opt/lib" .work/core-build/abi-smoke
-          qemu-mipsel "$sysroot/opt/lib/ld.so.1" --library-path "$sysroot/opt/lib" dist/csqtt-core --config-file /nonexistent/csqtt.json 2>.work/core-startup.log && exit 1
+          qemu-mipsel "$sysroot/opt/lib/ld.so.1" --library-path "$sysroot/opt/lib" dist/csqtt-client --config-file /nonexistent/csqtt.json 2>.work/core-startup.log && exit 1
           grep -E 'configuration|config|No such file|os error' .work/core-startup.log
       - uses: actions/upload-artifact@v4
         with:
-          name: csqtt-core-entware-mipsel
+          name: csqtt-client-entware-mipsel
           path: |
-            dist/csqtt-core
-            dist/csqtt-core.sha256
+            dist/csqtt-client
+            dist/csqtt-client.sha256
           retention-days: 14

@@ -17,7 +17,7 @@ if [ ! -f "$work/sysroot/.ready-$gcc_sha" ]; then
   gcc_lib="$work/sysroot/opt/lib/gcc/mipsel-openwrt-linux-gnu/8.4.0"
   # Do not pass -B pointing to the native GCC directory: it contains MIPS cc1
   # executables. Only its ABI-matched startup objects and libraries are used.
-  find "$gcc_lib" -maxdepth 1 \( -name '*.o' -o -name '*.a' -o -name '*.so*' \) -exec cp -a '{}' "$work/sysroot/opt/lib/" \;
+  find "$gcc_lib" -maxdepth 1 \( -name '*.o' -o -name '*.a' -o -name '*.so*' \) ! -name 'liblto_plugin*' -exec cp -a '{}' "$work/sysroot/opt/lib/" \;
   touch "$work/sysroot/.ready-$gcc_sha"
 fi
 export CSQTT_ENTWARE_SYSROOT="$work/sysroot"
@@ -28,7 +28,7 @@ cc=mipsel-linux-gnu-gcc
 if [[ ${0##*/} == *g++ ]]; then cc=mipsel-linux-gnu-g++; fi
 builtin_include=$($cc -print-file-name=include)
 exec "$cc" --sysroot="$CSQTT_ENTWARE_SYSROOT" \
-  -mips32r2 -mabi=32 -msoft-float -mno-branch-likely \
+  -mips32r2 -mabi=32 -msoft-float -mno-branch-likely -fno-use-linker-plugin \
   -B"$CSQTT_ENTWARE_SYSROOT/opt/lib/" \
   -nostdinc -isystem "$builtin_include" -isystem "$CSQTT_ENTWARE_SYSROOT/opt/include" \
   -L"$CSQTT_ENTWARE_SYSROOT/opt/lib" \
@@ -66,5 +66,5 @@ cargo build --manifest-path "$root/vendor/csqtt/rust-client/Cargo.toml" \
   --locked --release --target "$work/$target.json" -Z build-std=std,panic_unwind
 core="$work/target/$target/release/client"
 python3 "$root/scripts/check-core-elf.py" "$core"
-cp "$core" "$root/dist/csqtt-core"
-sha256sum "$root/dist/csqtt-core" > "$root/dist/csqtt-core.sha256"
+cp "$core" "$root/dist/csqtt-client"
+sha256sum "$root/dist/csqtt-client" > "$root/dist/csqtt-client.sha256"
