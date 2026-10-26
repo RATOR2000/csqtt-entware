@@ -1,7 +1,19 @@
 name: Core ABI and tests
 on:
   push:
+    paths:
+      - 'vendor/csqtt/**'
+      - 'targets/**'
+      - 'scripts/build-core.sh'
+      - 'scripts/check-core-elf.py'
+      - '.github/workflows/core-build.yml'
   pull_request:
+    paths:
+      - 'vendor/csqtt/**'
+      - 'targets/**'
+      - 'scripts/build-core.sh'
+      - 'scripts/check-core-elf.py'
+      - '.github/workflows/core-build.yml'
   workflow_dispatch:
 permissions:
   contents: read
