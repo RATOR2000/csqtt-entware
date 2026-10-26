@@ -21,7 +21,7 @@ use sha1::Sha1;
 #[cfg(unix)]
 use std::collections::VecDeque;
 use std::net::{IpAddr, SocketAddr};
-use crate::atomic::{AtomicU64};
+use crate::atomic::AtomicU64;
 use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 #[cfg(unix)]
 use std::{

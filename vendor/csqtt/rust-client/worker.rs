@@ -16,7 +16,7 @@ use crate::{
     turn::TurnRequestError,
     turn_endpoint::TurnTransportMode,
 };
-use crate::atomic::{AtomicU64};
+use crate::atomic::AtomicU64;
 use std::{
     collections::HashSet,
     net::SocketAddr,

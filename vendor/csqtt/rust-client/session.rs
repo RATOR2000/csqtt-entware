@@ -25,7 +25,7 @@ use anyhow::{Context, Result, anyhow, bail};
 use bytes::Bytes;
 #[cfg(test)]
 use std::time::Instant;
-use crate::atomic::{AtomicU64};
+use crate::atomic::AtomicU64;
 use std::{
     collections::VecDeque,
     net::SocketAddr,

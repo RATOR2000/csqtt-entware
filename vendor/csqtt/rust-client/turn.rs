@@ -24,7 +24,7 @@ use crate::{
 };
 use anyhow::{Context, Result, bail};
 use socket2::SockRef;
-use crate::atomic::{AtomicU64};
+use crate::atomic::AtomicU64;
 use std::{
     net::SocketAddr,
     sync::{

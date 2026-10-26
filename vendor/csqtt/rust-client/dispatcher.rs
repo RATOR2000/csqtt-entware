@@ -13,7 +13,7 @@ use anyhow::{Context, Result};
 use arc_swap::{ArcSwap, ArcSwapOption};
 use crossbeam_queue::ArrayQueue;
 use socket2::SockRef;
-use crate::atomic::{AtomicU64};
+use crate::atomic::AtomicU64;
 use std::{
     collections::VecDeque,
     fs::File,

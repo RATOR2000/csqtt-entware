@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 
 use crate::protocol::StreamRepairCommand;
-use crate::atomic::{AtomicU64};
+use crate::atomic::AtomicU64;
 use std::sync::{
     Arc,
     atomic::{Ordering},

@@ -12,7 +12,7 @@ use hmac::{Hmac, Mac};
 use rand::RngExt;
 use rand::{Rng, SeedableRng, rngs::StdRng};
 use sha1::Sha1;
-use crate::atomic::{AtomicU64};
+use crate::atomic::AtomicU64;
 use std::sync::atomic::{Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 

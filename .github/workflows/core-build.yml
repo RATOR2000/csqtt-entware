@@ -46,6 +46,8 @@ jobs:
           key: core-mips-entware-v1-${{ hashFiles('vendor/csqtt/rust-client/Cargo.lock', 'targets/**', 'scripts/build-core.sh') }}
           restore-keys: core-mips-entware-v1-
       - name: Cross compile and check ABI
+        env:
+          CSQTT_BUILD_TESTS: 1
         run: bash scripts/build-core.sh
       - name: Emulated startup smoke check
         run: |

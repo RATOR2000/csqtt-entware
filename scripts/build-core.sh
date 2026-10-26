@@ -63,8 +63,33 @@ printf '#include <stdio.h>\nint main(void){puts("entware-softfloat");return 0;}\
 "$work/bin/entware-gcc" "$work/abi-smoke.c" -o "$work/abi-smoke"
 python3 "$root/scripts/check-core-elf.py" "$work/abi-smoke"
 cargo build --manifest-path "$root/vendor/csqtt/rust-client/Cargo.toml" \
-  --locked --release --target "$work/$target.json" -Z build-std=std,panic_unwind
+  --locked --release --target "$work/$target.json" -Z build-std=std,panic_unwind -Z json-target-spec
 core="$work/target/$target/release/client"
 python3 "$root/scripts/check-core-elf.py" "$core"
 cp "$core" "$root/dist/csqtt-client"
-sha256sum "$root/dist/csqtt-client" > "$root/dist/csqtt-client.sha256"
+(cd "$root/dist" && sha256sum csqtt-client > csqtt-client.sha256)
+if [ "${CSQTT_BUILD_TESTS:-0}" = 1 ]; then
+  cargo test --manifest-path "$root/vendor/csqtt/rust-client/Cargo.toml" \
+    --locked --release --no-run --message-format=json \
+    --target "$work/$target.json" -Z build-std=std,panic_unwind -Z json-target-spec > "$work/test-artifacts.jsonl"
+  test_exe=$(python3 - "$work/test-artifacts.jsonl" <<'PY'
+import json,sys
+for line in open(sys.argv[1]):
+    event=json.loads(line)
+    if (event.get('reason')=='compiler-artifact' and event.get('profile',{}).get('test')
+        and event.get('target',{}).get('name')=='client' and event.get('executable')):
+        print(event['executable'])
+        break
+else:
+    raise SystemExit('No MIPS test executable was built')
+PY
+  )
+  python3 "$root/scripts/check-core-elf.py" "$test_exe"
+  for test_name in \
+    atomic::tests::portable_generations_cross_32_bits_under_contention \
+    wrap::tests::known_wire_vector \
+    obfs::tests::unwraps_go_audio_and_video_vectors; do
+    timeout 90 qemu-mipsel "$work/sysroot/opt/lib/ld.so.1" \
+      --library-path "$work/sysroot/opt/lib" "$test_exe" --exact "$test_name"
+  done
+fi

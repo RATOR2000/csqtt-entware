@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 
 use crossbeam_queue::ArrayQueue;
-use crate::atomic::{AtomicU64};
+use crate::atomic::AtomicU64;
 use std::{
     fmt,
     io::{self, Write},

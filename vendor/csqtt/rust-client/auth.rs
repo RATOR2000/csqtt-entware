@@ -11,7 +11,7 @@ use crate::{
 use anyhow::{Context, Result, bail};
 use primp::{Client, Impersonate, ImpersonateOS, PseudoId, PseudoOrder, cookie::Jar, header};
 use serde_json::Value;
-use crate::atomic::{AtomicI64};
+use crate::atomic::AtomicI64;
 use std::{
     sync::{
         Arc,

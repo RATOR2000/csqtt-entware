@@ -5,7 +5,7 @@ use crate::{
     client_perf::{self, Stage as PerfStage},
     events::Events,
 };
-use crate::atomic::{AtomicI64};
+use crate::atomic::AtomicI64;
 use std::sync::{
     Arc,
     atomic::{AtomicI32, Ordering},
