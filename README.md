@@ -75,6 +75,24 @@ Android Helper. HTTPS-брокер запускается внутри той ж
 из исходного проекта, не APK-пакеты OpenWrt. SHA-256 Android-файла:
 `01d837fef92239db28951f7ce60f5a26eb77c1c33236e8bb188d4a84e7c4d8d4`.
 
+## Установка одной командой после публикации
+
+**Установочный релиз ещё не опубликован; ниже только шаблон будущей команды.**
+После прохождения [приёмки](docs/ACCEPTANCE.md) замените `PUBLISHED_RELEASE_TAG`
+точным опубликованным тегом вида `vВЕРСИЯ`. Команда выполняется в Entware от root;
+нужны пакет `wget-ssl` и актуальные CA-сертификаты. `main` и `latest` не используются.
+
+```sh
+(set -eu; umask 077; tag='PUBLISHED_RELEASE_TAG'; stage=$(mktemp -d /tmp/csqtt-loader.XXXXXX); trap 'rm -rf "$stage"' 0; trap 'exit 1' HUP INT TERM; (ulimit -f 128; /opt/bin/wget --no-config --no-netrc --no-proxy --no-hsts --check-certificate --ca-certificate=/opt/etc/ssl/certs/ca-certificates.crt --max-redirect=0 --timeout=20 --tries=2 -qO "$stage/bootstrap.sh" "https://raw.githubusercontent.com/RATOR2000/csqtt-entware/refs/tags/$tag/scripts/bootstrap.sh") && sh "$stage/bootstrap.sh" "$tag")
+```
+
+Загрузчик получает версионный IPK, `install.sh` и их отдельные `.sha256` из
+**того же тега** репозитория `RATOR2000/csqtt-entware`. Он проверяет HTTPS и обе
+контрольные суммы, работает в закрытом каталоге RAM и удаляет его при завершении.
+Установщик сохраняет настройки и ключи при обновлении. Контрольные суммы
+подтверждают целостность; доверие к публикации обеспечивается HTTPS GitHub.
+До публикации используется следующий локальный способ для разработчика.
+
 ## Установка кандидата разработчиком
 
 До опубликованного preview используется явный локальный IPK и его контрольная
