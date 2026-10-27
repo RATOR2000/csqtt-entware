@@ -26,7 +26,7 @@ func main() {
 	opts := manager.Options{}
 	flag.StringVar(&opts.Listen, "listen", "192.168.2.1:8080", "Exact LAN IPv4 and port")
 	flag.StringVar(&opts.ConfigPath, "config", "/opt/etc/csqtt/settings.json", "Private settings path")
-	flag.StringVar(&opts.RuntimeDir, "runtime", "/opt/var/run/csqtt", "Private runtime directory")
+	flag.StringVar(&opts.RuntimeDir, "runtime", "/tmp/csqtt", "Private tmpfs runtime directory")
 	flag.StringVar(&opts.CorePath, "core", "/opt/bin/csqtt-client", "CSQTT core binary")
 	showVersion := flag.Bool("version", false, "Print build version")
 	flag.Parse()

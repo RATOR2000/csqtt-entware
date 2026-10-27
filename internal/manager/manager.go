@@ -94,10 +94,7 @@ func New(opts Options) (*Manager, error) {
 	if err != nil || e != nil || pe != nil || !ip.Is4() || (!ip.IsPrivate() && !ip.IsLoopback()) || p < 1 || p > 65535 {
 		return nil, errors.New("listen_requires_exact_lan_or_loopback_ipv4")
 	}
-	if err = os.MkdirAll(opts.RuntimeDir, 0700); err != nil {
-		return nil, err
-	}
-	if err = os.Chmod(opts.RuntimeDir, 0700); err != nil {
+	if err = privateDir(opts.RuntimeDir); err != nil {
 		return nil, err
 	}
 	settings, err := loadSettings(opts.ConfigPath)

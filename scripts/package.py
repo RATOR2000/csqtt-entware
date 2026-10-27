@@ -6,7 +6,7 @@ import argparse
 import gzip
 import hashlib
 import io
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import struct
 import tarfile
@@ -30,16 +30,33 @@ def mips_elf(path: Path) -> bytes:
     return data
 
 
-def tar_gz(entries: list[tuple[str, bytes, int]], *, ordered: bool = False) -> bytes:
+def tar_gz(entries: list[tuple[str, bytes, int]], *, ordered: bool = False,
+           include_parents: bool = False) -> bytes:
+    # Entware opkg does not create missing parent directories while extracting
+    # regular files. Only data.tar.gz asks for them; the outer IPK and control
+    # archive retain their existing member layout.
+    members: list[tuple[str, bytes | None, int]]
+    if include_parents:
+        parents = {str(parent) for name, _, _ in entries
+                   for parent in PurePosixPath(name).parents if str(parent) != "."}
+        directories = [(name + "/", None, 0o755)
+                       for name in sorted(parents, key=lambda name: (name.count("/"), name))]
+        members = directories + sorted(entries)
+    else:
+        members = entries if ordered else sorted(entries)
     output = io.BytesIO()
     with gzip.GzipFile(fileobj=output, mode="wb", mtime=0, filename="") as zipped:
         with tarfile.open(fileobj=zipped, mode="w", format=tarfile.USTAR_FORMAT) as archive:
-            for name, data, mode in entries if ordered else sorted(entries):
+            for name, data, mode in members:
                 info = tarfile.TarInfo(name)
-                info.size, info.mode, info.mtime = len(data), mode, 0
+                info.size, info.mode, info.mtime = len(data) if data is not None else 0, mode, 0
                 info.uid = info.gid = 0
                 info.uname = info.gname = "root"
-                archive.addfile(info, io.BytesIO(data))
+                if data is None:
+                    info.type = tarfile.DIRTYPE
+                    archive.addfile(info)
+                else:
+                    archive.addfile(info, io.BytesIO(data))
     return output.getvalue()
 
 
@@ -71,7 +88,7 @@ def build(core: Path, manager: Path, version: str) -> bytes:
     return tar_gz([
         ("./debian-binary", b"2.0\n", 0o644),
         ("./control.tar.gz", tar_gz(controls), 0o644),
-        ("./data.tar.gz", tar_gz(payloads), 0o644),
+        ("./data.tar.gz", tar_gz(payloads, include_parents=True), 0o644),
     ], ordered=True)
 
 
@@ -79,7 +96,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--core", type=Path, default=ROOT / "dist/csqtt-client")
     parser.add_argument("--manager", type=Path, default=ROOT / "dist/csqtt-entware")
-    parser.add_argument("--version", default="0.1.0~dev1")
+    parser.add_argument("--version", default="0.1.0~dev4")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     output = args.output or ROOT / f"dist/csqtt-entware_{args.version}_{ARCH}.ipk"

@@ -5,6 +5,29 @@ PATH=/opt/sbin:/opt/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 umask 077
 fail() { printf '%s\n' "CSQTT: $1" >&2; exit 1; }
+verify_payload() {
+    # An optional filesystem prefix makes this pure postcondition testable on
+    # the host. Production calls it without a prefix and checks the real /opt.
+    verify_root=${1:-}
+    inventory=$(opkg files csqtt-entware 2>/dev/null) || return 1
+    paths=$(printf '%s\n' "$inventory" | awk '
+        /^\// {
+            if (($0 != "/opt" && $0 !~ /^\/opt\//) || $0 ~ /\/\.\.?($|\/)/ || $0 ~ /[\r\t]/) bad=1;
+            else {print; count++}
+        }
+        END {exit (bad || count == 0)}') || return 1
+    printf '%s\n' "$paths" | while IFS= read -r installed; do
+        test -r "$verify_root$installed" || exit 1
+    done || return 1
+    for installed in /opt/bin/csqtt-client /opt/bin/csqtt-entware /opt/etc/init.d/S90csqtt; do
+        test -x "$verify_root$installed" || return 1
+    done
+    for license in LICENSE THIRD_PARTY.md golang.zx2c4.com/wireguard/LICENSE \
+        golang.zx2c4.com/wintun/LICENSE golang.org/x/crypto/LICENSE \
+        golang.org/x/net/LICENSE golang.org/x/sys/LICENSE; do
+        test -s "$verify_root/opt/share/licenses/csqtt-entware/$license" || return 1
+    done
+}
 check_only=0
 if [ "${1:-}" = --check ]; then check_only=1; shift; fi
 [ "$#" -ge 2 ] && [ "$#" -le 3 ] || fail 'Usage: install.sh [--check] /absolute/package.ipk SHA256 [LAN_IP:PORT]'
@@ -67,5 +90,6 @@ if [ "$#" -eq 3 ] || [ ! -f /opt/etc/csqtt/listen ]; then
     chmod 600 /opt/etc/csqtt/listen
 fi
 opkg install "$artifact" || fail 'installation failed; settings backup was retained'
+verify_payload || fail 'incomplete package extraction; settings backup was retained'
 printf '%s\n' "CSQTT manager installed: http://$listen/"
 printf '%s\n' 'This confirms package installation only. Configure CSQTT and verify the full VPN path in the panel.'

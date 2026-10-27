@@ -1,8 +1,13 @@
 """Host checks for IPK boundaries; these do not qualify router installation."""
 import importlib.util
 import io
+import os
 from pathlib import Path
+import re
+import shlex
+import shutil
 import struct
+import subprocess
 import tempfile
 import tarfile
 import unittest
@@ -49,13 +54,32 @@ class PackagingTests(unittest.TestCase):
             self.assertIn("opt/bin/csqtt-client", names)
             self.assertIn("opt/bin/csqtt-entware", names)
             self.assertEqual(tar.getmember("opt/etc/init.d/S90csqtt").mode, 0o755)
-            self.assertFalse(any(name.startswith("opt/etc/csqtt/") for name in names))
+            self.assertFalse(any(name == "opt/etc/csqtt" or name.startswith("opt/etc/csqtt/") for name in names))
             self.assertIn("opt/share/licenses/csqtt-entware/golang.zx2c4.com/wireguard/LICENSE", names)
             for item in tar.getmembers():
-                self.assertTrue(item.isfile())
+                self.assertTrue(item.isfile() or item.isdir())
+                if item.isdir():
+                    self.assertEqual(item.mode, 0o755)
                 self.assertFalse(item.name.startswith("/") or ".." in Path(item.name).parts)
                 self.assertEqual((item.uid, item.gid, item.mtime), (0, 0, 0))
                 self.assertLess(item.mode & 0o002, 1)
+
+    def test_payload_directories_precede_every_file_parent(self):
+        archive = members(package.build(self.core, self.manager, "0.1.0~dev2"))
+        with tarfile.open(fileobj=io.BytesIO(archive["data.tar.gz"])) as tar:
+            seen = set()
+            for item in tar.getmembers():
+                for parent in Path(item.name).parents:
+                    if str(parent) != ".":
+                        self.assertIn(parent.as_posix(), seen, f"missing prior directory for {item.name}")
+                if item.isdir():
+                    seen.add(item.name.rstrip("/"))
+            self.assertIn("opt/share/licenses/csqtt-entware/golang.org/x/crypto", seen)
+            self.assertIn("opt/share/licenses/csqtt-entware/golang.zx2c4.com/wireguard", seen)
+        # No parent entries are added to the IPK's three-member outer archive
+        # or to control.tar.gz.
+        with tarfile.open(fileobj=io.BytesIO(archive["control.tar.gz"])) as tar:
+            self.assertTrue(all(item.isfile() for item in tar.getmembers()))
 
     def test_control_hooks_and_offline_install_boundary(self):
         archive = members(package.build(self.core, self.manager, "0.1.0~dev1"))
@@ -93,6 +117,53 @@ class PackagingTests(unittest.TestCase):
         for version in ("", "1\nArchitecture: all", "../../bad", "1/../../bad", "1;reboot"):
             with self.assertRaises(ValueError):
                 package.build(self.core, self.manager, version)
+
+    def test_installer_postcondition_detects_partial_extraction(self):
+        if os.name == "nt":
+            git = shutil.which("git")
+            shell = Path(git).resolve().parents[1] / "bin/bash.exe" if git else None
+            if shell is None or not shell.is_file():
+                self.skipTest("Git Bash is needed for shell postcondition tests on Windows")
+            shell = str(shell)
+        else:
+            shell = shutil.which("sh")
+            if shell is None:
+                self.skipTest("POSIX sh is unavailable")
+        script = (ROOT / "scripts/install.sh").read_text()
+        function = re.search(r"^verify_payload\(\) \{\n.*?^\}", script, re.M | re.S).group(0)
+        manifest = members(package.build(self.core, self.manager, "0.1.0~dev2"))
+        root = Path(self.tmp.name) / "installed"
+        paths = []
+        with tarfile.open(fileobj=io.BytesIO(manifest["data.tar.gz"])) as payload:
+            for item in payload.getmembers():
+                destination = root / item.name
+                paths.append("/" + item.name.rstrip("/"))
+                if item.isdir():
+                    destination.mkdir(parents=True, exist_ok=True)
+                else:
+                    destination.write_bytes(payload.extractfile(item).read())
+                    if item.name in ("opt/bin/csqtt-client", "opt/bin/csqtt-entware"):
+                        # Git Bash's -x recognizes executable file formats on
+                        # Windows; a cross-target ELF cannot be executable by
+                        # this host. Only presence/mode is under test here.
+                        destination.write_bytes(b"#!/bin/sh\nexit 0\n")
+                    destination.chmod(item.mode)
+        inventory = Path(self.tmp.name) / "inventory.txt"
+
+        def verify(entries):
+            inventory.write_text("Package csqtt-entware is installed on root and has following files:\n" + "\n".join(entries) + "\n", newline="\n")
+            command = ("opkg() { cat " + shlex.quote(inventory.as_posix()) + "; }\n" +
+                       function + "\nverify_payload " + shlex.quote(root.as_posix()))
+            return subprocess.run([shell, "-c", command], capture_output=True, text=True).returncode
+
+        self.assertEqual(verify(paths), 0)
+        missing = root / "opt/share/licenses/csqtt-entware/golang.zx2c4.com/wireguard/LICENSE"
+        missing.unlink()
+        self.assertNotEqual(verify(paths), 0, "opkg exit 0 must not mask missing nested licenses")
+        missing.write_text("restored test license")
+        self.assertNotEqual(verify(paths + ["/etc/shadow"]), 0, "manifest must remain inside /opt")
+        self.assertNotEqual(verify(paths + ["/opt/../etc/shadow"]), 0, "manifest traversal must be rejected")
+        self.assertNotEqual(verify([]), 0, "an empty opkg file inventory is not installation proof")
 
 
 if __name__ == "__main__":

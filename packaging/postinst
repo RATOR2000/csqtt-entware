@@ -2,8 +2,12 @@
 set -eu
 [ -n "${IPKG_INSTROOT:-}" ] && exit 0
 umask 077
-mkdir -p /opt/etc/csqtt /opt/var/run/csqtt
-chmod 700 /opt/etc/csqtt /opt/var/run/csqtt
+[ ! -L /opt/etc/csqtt ] && [ ! -L /tmp/csqtt ] || exit 1
+mkdir -p /opt/etc/csqtt /tmp/csqtt
+for private_dir in /opt/etc/csqtt /tmp/csqtt; do
+    [ "$(ls -nd "$private_dir" | awk '{print $3}')" = 0 ] || exit 1
+done
+chmod 700 /opt/etc/csqtt /tmp/csqtt
 if [ ! -f /opt/etc/csqtt/listen ]; then printf '%s\n' '192.168.2.1:8080' > /opt/etc/csqtt/listen; fi
 chmod 600 /opt/etc/csqtt/listen
 /opt/etc/init.d/S90csqtt start

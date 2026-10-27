@@ -32,7 +32,7 @@ type Settings struct {
 }
 
 func atomicJSON(path string, v any) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+	if err := privateDir(filepath.Dir(path)); err != nil {
 		return err
 	}
 	if err := privatePath(path); err != nil {
@@ -64,6 +64,26 @@ func atomicJSON(path string, v any) error {
 	return os.Rename(name, path)
 }
 
+// privateDir must be checked before any chmod or private-file access. In
+// particular, /tmp may already contain a same-named path created by another
+// user; neither that path nor a symlink target is ours to take over.
+func privateDir(path string) error {
+	info, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		if err = os.MkdirAll(path, 0700); err != nil {
+			return err
+		}
+		info, err = os.Lstat(path)
+	}
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return errors.New("unsafe_private_directory")
+	}
+	return securePrivateDir(path, info)
+}
+
 func privatePath(path string) error {
 	info, err := os.Lstat(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -83,6 +103,9 @@ func privatePath(path string) error {
 
 func loadSettings(path string) (Settings, error) {
 	var s Settings
+	if err := privateDir(filepath.Dir(path)); err != nil {
+		return s, err
+	}
 	if err := privatePath(path); err != nil {
 		return s, err
 	}

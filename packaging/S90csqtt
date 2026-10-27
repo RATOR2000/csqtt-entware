@@ -5,7 +5,7 @@ export PATH
 umask 077
 DAEMON=/opt/bin/csqtt-entware
 DAEMON_REAL=$(readlink -f "$DAEMON" 2>/dev/null || printf '%s' "$DAEMON")
-RUNTIME=/opt/var/run/csqtt
+RUNTIME=/tmp/csqtt
 PIDFILE=$RUNTIME/manager.pid
 SETTINGS=/opt/etc/csqtt/settings.json
 LISTEN_FILE=/opt/etc/csqtt/listen
@@ -21,6 +21,8 @@ ssd() {
     fi
 }
 running() {
+    [ -d "$RUNTIME" ] && [ ! -L "$RUNTIME" ] || return 1
+    [ "$(ls -nd "$RUNTIME" | awk '{print $3}')" = 0 ] || return 1
     [ -r "$PIDFILE" ] || return 1
     IFS= read -r manager_pid < "$PIDFILE" || return 1
     case "$manager_pid" in ''|*[!0-9]*) return 1 ;; esac
@@ -30,7 +32,11 @@ start() {
     running && return 0
     [ -x "$DAEMON" ] || fail 'manager binary is missing'
     [ -x /opt/bin/csqtt-client ] || fail 'transport binary is missing'
+    [ ! -L /opt/etc/csqtt ] && [ ! -L "$RUNTIME" ] || fail 'private directory is a symlink'
     mkdir -p /opt/etc/csqtt "$RUNTIME" || fail 'cannot create private directories'
+    for private_dir in /opt/etc/csqtt "$RUNTIME"; do
+        [ "$(ls -nd "$private_dir" | awk '{print $3}')" = 0 ] || fail 'private directory has an unexpected owner'
+    done
     chmod 700 /opt/etc/csqtt "$RUNTIME" || fail 'cannot protect private directories'
     listen=192.168.2.1:8080
     if [ -f "$LISTEN_FILE" ]; then IFS= read -r listen < "$LISTEN_FILE" || :; fi

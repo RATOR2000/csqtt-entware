@@ -1,6 +1,7 @@
 # Development status
 
-Implementation started. This is not an installable or qualified release.
+Development candidate implemented and installed on the target. No public
+installable preview or qualified VPN release has been published.
 
 ## Agreed behavior
 
@@ -16,7 +17,7 @@ Implementation started. This is not an installable or qualified release.
 - Read-only hardware exploration confirms MIPS soft-float Entware and a native
   WireGuard component. Network namespaces are unavailable on the target.
 - Source analysis confirms raw-IP UDP adapter and persistent server allocation
-  by device identity. The daemon requires an explicit packet-backend extension.
+  by device identity. The daemon now has the explicit managed packet backend.
 
 ## Implemented and checked
 
@@ -28,23 +29,33 @@ Implementation started. This is not an installable or qualified release.
   bounded packet bridge and integrated on-demand CAPTCHA helper broker exist.
 - Go host tests, vet and MIPS cross compilation passed. Bridge tests include
   real encrypted round trips, UDP recovery, ICMP and fragment preservation.
+- Go CI 40541973514 at `9a136f5932954c0fc04e525d5d90f806253884b1`
+  passed Linux lifecycle/race/vet, packaging tests and MIPS manager compilation.
 - Both executables passed native startup on the target. A disposable profile
   was imported through the stock UI with a loopback endpoint; the native WG
   client completed a handshake and round-tripped full 1280-byte ICMP packets.
 - The stock 3.8 importer ignores MTU. UI and README now require setting 1280
   manually in the native connection's advanced settings, with TCP MSS enabled.
-- Entware package builder, service and installer are under review.
+- Actual installer preflight and installation passed. The first development
+  package exposed missing parent directories for licenses despite opkg exit 0;
+  the corrected data archive includes directories and the installer verifies
+  the entire installed inventory, executables and seven license files.
+- Development upgrades preserve owner settings and WG keys. HTTP checks on the
+  installed panel confirm Host/Origin/CSRF and secret-redaction behavior.
+- Managed runtime is in private `/tmp/csqtt` (RAM); persistent settings/identity
+  remain on USB. This avoids frequent synchronous status writes to the USB.
 
-## Active ownership
+## Ownership and handoff
 
 - Root: integration, router/UI checks and STATUS.
-- mips_build: precise build evidence and private artifact retrieval.
-- manager_review: manager lifecycle/security tests and Go CI.
-- packaging_finish: package/installer review, tests and documentation.
+- Subagent build, manager review and packaging scopes completed. Recheck live
+  agents before delegating further work; do not assume these sessions exist.
 
 ## Next
 
-Remove the disposable fixture, run the actual candidate package preflight and
-installation, then verify the LAN panel. Real server credentials and an attached
-LAN test device are still pending. No real VPN traffic, throughput or outage test
-is qualified. No installable preview has been published.
+The disposable fixture was removed and the original main routes restored.
+Finish the RAM-runtime candidate upgrade and source checkpoint, then ask the
+user to enter server credentials in the panel and attach a LAN test device.
+Real CSQTT/VK authorization, policy/NAT/DNS behavior, memory under real traffic,
+throughput and outage tests are still pending. Reboot, USB removal or disruptive
+WAN/server tests require separate explicit authorization; do not run them now.

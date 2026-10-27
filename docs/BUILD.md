@@ -65,16 +65,21 @@ soft-float, загрузчик `/opt/lib/ld.so.1` и требования glibc 
 python3 -m unittest discover -s tests -p 'test_*.py' -v
 sh -n packaging/S90csqtt packaging/preinst packaging/postinst \
   packaging/prerm packaging/postrm scripts/install.sh
-python3 scripts/package.py --version '0.1.0~dev1'
+python3 scripts/package.py --version '0.1.0~dev4'
 ```
 
-Получаются `dist/csqtt-entware_0.1.0~dev1_mipsel-3.4.ipk` и соседний файл
+Получаются `dist/csqtt-entware_0.1.0~dev4_mipsel-3.4.ipk` и соседний файл
 `.sha256`. Это кандидат разработчика, пока не пройдены этапы приёмки.
 
 Пакет повторяет формат официального Entware: внешний детерминированный
 `tar.gz` с `debian-binary`, `control.tar.gz`, `data.tar.gz`. В нём находятся
 два исполняемых файла, init-скрипт и лицензии. Проверка заголовков в упаковщике
 отбрасывает явно чужую архитектуру, но не заменяет полную ABI-проверку выше.
+В `data.tar.gz` все родительские каталоги явно перечислены перед файлами:
+Entware opkg не создаёт отсутствующие каталоги при извлечении обычного файла.
+После установки скрипт проверяет читаемость всего списка `opkg files`,
+исполняемые файлы и наличие лицензий. Ошибку неполной распаковки он возвращает
+даже при успешном коде завершения opkg.
 
 Пути данных:
 
@@ -84,7 +89,7 @@ python3 scripts/package.py --version '0.1.0~dev1'
 | `/opt/bin/csqtt-client` | CSQTT-транспорт |
 | `/opt/etc/init.d/S90csqtt` | Запуск и корректная остановка |
 | `/opt/etc/csqtt/` | Закрытые настройки, идентичность и ключи; сохраняются |
-| `/opt/var/run/csqtt/` | Закрытая конфигурация процесса, статус и сокеты |
+| `/tmp/csqtt/` | Закрытая конфигурация процесса, статус и сокеты в RAM |
 | `/opt/var/backups/csqtt/` | Закрытые копии перед обновлением |
 
 Данные владельца не входят в `data.tar.gz`. Lifecycle-скрипты не меняют
