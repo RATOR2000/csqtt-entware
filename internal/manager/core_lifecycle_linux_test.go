@@ -111,6 +111,38 @@ func TestFailedExecAndExitedCoreConsumeBoundedRestartBudget(t *testing.T) {
 	}
 }
 
+func TestKnownStartupFailureSurvivesRestartBudgetWithoutLeakingOutput(t *testing.T) {
+	for _, fixture := range []struct{ line, code string }{
+		{"[DAEMON] configuration_failed: invalid VK call hash", "core_config_vk_invalid"},
+		{"[PANIC] Rust client task failed", "core_runtime_panic"},
+		{"unknown private-test-secret https://example.invalid/private-call", "core_exited"},
+	} {
+		t.Run(fixture.code, func(t *testing.T) {
+			m, _ := coreFixture(t, "printf '%s\\n' '"+fixture.line+"' >&2; exit 1")
+			m.settings.Enabled = true
+			for i := 0; i < 3; i++ {
+				if err := m.startCoreLocked(false); err != nil {
+					t.Fatal(err)
+				}
+				awaitCoreExit(t, m)
+				m.tick(context.Background())
+				if m.Snapshot().Error != fixture.code {
+					t.Fatal("core startup output did not become the expected public enum")
+				}
+			}
+			m.lastStart = time.Now().Add(-16 * time.Second)
+			m.tick(context.Background())
+			want := fixture.code
+			if want == "core_exited" {
+				want = "restart_budget_exhausted"
+			}
+			if m.cmd != nil || m.Snapshot().Error != want {
+				t.Fatal("restart budget discarded the recognized startup cause or started another core")
+			}
+		})
+	}
+}
+
 func TestStaleStatusAndChangedAllocationCloseRealPacketBridge(t *testing.T) {
 	m, _ := coreFixture(t, "exec sleep 30")
 	if err := m.startCoreLocked(false); err != nil {

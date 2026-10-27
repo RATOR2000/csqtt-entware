@@ -66,25 +66,26 @@ type PublicStatus struct {
 	Error                   string          `json:"error,omitempty"`
 }
 type Manager struct {
-	op         sync.Mutex
-	opts       Options
-	settings   Settings
-	token      string
-	host       string
-	cmd        *exec.Cmd
-	done       chan struct{}
-	generation uint64
-	core       coreStatus
-	bridge     *wgbridge.Bridge
-	bridgeIP   string
-	probe      ProbeStatus
-	lastError  string
-	lastProbe  time.Time
-	attempts   []time.Time
-	lastStart  time.Time
-	helper     *captcha.Service
-	cancel     context.CancelFunc
-	closed     bool
+	op            sync.Mutex
+	opts          Options
+	settings      Settings
+	token         string
+	host          string
+	cmd           *exec.Cmd
+	done          chan struct{}
+	startupOutput *coreStartupOutput
+	generation    uint64
+	core          coreStatus
+	bridge        *wgbridge.Bridge
+	bridgeIP      string
+	probe         ProbeStatus
+	lastError     string
+	lastProbe     time.Time
+	attempts      []time.Time
+	lastStart     time.Time
+	helper        *captcha.Service
+	cancel        context.CancelFunc
+	closed        bool
 }
 
 func New(opts Options) (*Manager, error) {
@@ -192,7 +193,9 @@ func (m *Manager) startCoreLocked(resetBudget bool) error {
 	}
 	m.attempts = recent
 	if len(m.attempts) >= 3 {
-		m.lastError = "restart_budget_exhausted"
+		if !isCoreStartupError(m.lastError) {
+			m.lastError = "restart_budget_exhausted"
+		}
 		return errors.New("Остановлено после трёх неудачных запусков. Проверьте диагностику")
 	}
 	conf := map[string]any{"peer": m.settings.Peer, "password": m.settings.Password, "vk_hashes": []string{m.settings.VKLink}, "workers": 9, "packet_adapter": "udp", "packet_listen": "127.0.0.1:39000", "packet_peer": "127.0.0.1:39001", "status_file": filepath.Join(m.opts.RuntimeDir, "status.json"), "control_socket": filepath.Join(m.opts.RuntimeDir, "control.sock"), "identity_file": filepath.Join(filepath.Dir(m.opts.ConfigPath), "identity.json")}
@@ -207,17 +210,23 @@ func (m *Manager) startCoreLocked(resetBudget bool) error {
 	setupProcess(cmd)
 	m.lastStart = now
 	m.attempts = append(m.attempts, now)
-	// Core output is deliberately not forwarded: no upstream error text can expose
-	// credentials or VK URLs in syslog, the terminal, or a public API response.
+	// Only fixed, known startup failures become public enums. Arbitrary output
+	// is discarded and never forwarded to syslog, the terminal or public APIs.
+	startupOutput := newCoreStartupOutput()
+	cmd.Stderr = startupOutput
+	cmd.WaitDelay = time.Second
 	if err := cmd.Start(); err != nil {
 		m.lastError = "core_start_failed"
 		return errors.New("Не удалось запустить ядро CSQTT")
 	}
 	m.cmd = cmd
+	m.startupOutput = startupOutput
 	m.done = make(chan struct{})
 	m.generation = 0
 	m.core = coreStatus{}
-	m.lastError = ""
+	if resetBudget || !isCoreStartupError(m.lastError) {
+		m.lastError = ""
+	}
 	done := m.done
 	go func() { _ = cmd.Wait(); close(done) }()
 	return nil
@@ -246,6 +255,7 @@ func (m *Manager) stopCoreLocked() {
 		m.cmd = nil
 		m.done = nil
 	}
+	m.startupOutput = nil
 	m.generation = 0
 	m.core = coreStatus{}
 }
@@ -318,10 +328,15 @@ func (m *Manager) tick(ctx context.Context) {
 		select {
 		case <-m.done:
 			m.stopBridgeLocked()
+			if code := m.startupOutput.errorCode(); code != "" {
+				m.lastError = code
+			} else if !isCoreStartupError(m.lastError) {
+				m.lastError = "core_exited"
+			}
 			m.cmd = nil
 			m.done = nil
+			m.startupOutput = nil
 			m.core = coreStatus{}
-			m.lastError = "core_exited"
 		default:
 		}
 	}
