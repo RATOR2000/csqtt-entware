@@ -31,6 +31,8 @@ installable preview or qualified VPN release has been published.
   real encrypted round trips, UDP recovery, ICMP and fragment preservation.
 - Go CI 40541973514 at `9a136f5932954c0fc04e525d5d90f806253884b1`
   passed Linux lifecycle/race/vet, packaging tests and MIPS manager compilation.
+- Go CI 40545782402 at `db70f79` also passed after extraction postconditions,
+  private-directory ownership checks and the RAM runtime changes.
 - Both executables passed native startup on the target. A disposable profile
   was imported through the stock UI with a loopback endpoint; the native WG
   client completed a handshake and round-tripped full 1280-byte ICMP packets.
@@ -44,6 +46,12 @@ installable preview or qualified VPN release has been published.
   installed panel confirm Host/Origin/CSRF and secret-redaction behavior.
 - Managed runtime is in private `/tmp/csqtt` (RAM); persistent settings/identity
   remain on USB. This avoids frequent synchronous status writes to the USB.
+- Candidate `0.1.0~dev4` was installed/upgraded successfully with complete
+  inventory/license verification. Settings and WG keys were checked unchanged
+  byte-for-byte across the upgrade; native service and tmpfs runtime are live.
+- Panel opened through an SSH tunnel. The user was asked to enter server data
+  locally and connect a LAN test device; no production server data was supplied
+  or inferred by the implementation agent.
 
 ## Ownership and handoff
 
@@ -54,8 +62,8 @@ installable preview or qualified VPN release has been published.
 ## Next
 
 The disposable fixture was removed and the original main routes restored.
-Finish the RAM-runtime candidate upgrade and source checkpoint, then ask the
-user to enter server credentials in the panel and attach a LAN test device.
-Real CSQTT/VK authorization, policy/NAT/DNS behavior, memory under real traffic,
-throughput and outage tests are still pending. Reboot, USB removal or disruptive
-WAN/server tests require separate explicit authorization; do not run them now.
+Wait for the user to save server credentials and connect a LAN test device.
+Then validate real CSQTT/VK authorization, generate/import the real profile,
+check native policy/NAT/DNS, and measure memory and traffic. No real VPN path or
+throughput has passed yet. Reboot, USB removal or disruptive WAN/server tests
+require separate explicit authorization; do not run them now.
