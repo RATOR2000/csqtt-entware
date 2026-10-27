@@ -46,12 +46,31 @@ installable preview or qualified VPN release has been published.
   installed panel confirm Host/Origin/CSRF and secret-redaction behavior.
 - Managed runtime is in private `/tmp/csqtt` (RAM); persistent settings/identity
   remain on USB. This avoids frequent synchronous status writes to the USB.
-- Candidate `0.1.0~dev4` was installed/upgraded successfully with complete
+- Candidate `0.1.0~dev5` was installed/upgraded successfully with complete
   inventory/license verification. Settings and WG keys were checked unchanged
   byte-for-byte across the upgrade; native service and tmpfs runtime are live.
-- Panel opened through an SSH tunnel. The user was asked to enter server data
-  locally and connect a LAN test device; no production server data was supplied
-  or inferred by the implementation agent.
+- Panel opened through an SSH tunnel; the owner entered credentials locally.
+- Native startup exposed an Entware libc `getrandom` stub returning ENOSYS.
+  `31c9293` calls the kernel CSPRNG on Linux MIPS GNU; it does not substitute a
+  weak entropy source. Core CI 40599225139 passed, including fresh entropy,
+  UUID generation and identity persistence. The installed production ELF now
+  authenticates without the temporary diagnostic preload.
+- Go CI 40599356532 passed for `aeed323`: bounded, allowlisted startup errors
+  and a retry action after a stopped connection, without exposing raw stderr.
+- Real VK authorization, nine CSQTT transport connections and a validated UDP
+  DNS response have passed on the router. The real native WG profile connects
+  to loopback; its actual MTU was corrected and verified as 1280, with MSS on.
+- One owner-supplied LAN phone is assigned to the WG-only CSQTT policy. Native
+  conntrack confirms its public TCP/UDP flows are NATed into the CSQTT address;
+  this is evidence beyond a local handshake, but not complete acceptance.
+- The WG DNS is interface-specific; no global Any DNS, DoH/DoT or filtering
+  override was found. No global IPv6 address or IPv6 route is currently active.
+- KeeneticOS 3.8 keeps every connection in its immutable built-in Default
+  policy. Therefore Home and Guest were assigned to a separate ISP policy
+  containing existing provider connections and explicitly excluding WG. The
+  Default policy is unused; the phone retains its explicit CSQTT assignment.
+- Explicit-tag bootstrap, checksum/redirect validation, four offline tests and
+  native staging limits passed at `0e77a03`. No release URL is published yet.
 
 ## Ownership and handoff
 
@@ -61,9 +80,9 @@ installable preview or qualified VPN release has been published.
 
 ## Next
 
-The disposable fixture was removed and the original main routes restored.
-Wait for the user to save server credentials and connect a LAN test device.
-Then validate real CSQTT/VK authorization, generate/import the real profile,
-check native policy/NAT/DNS, and measure memory and traffic. No real VPN path or
-throughput has passed yet. Reboot, USB removal or disruptive WAN/server tests
-require separate explicit authorization; do not run them now.
+Confirm the phone's external exit and browser behavior, finish DNS/TCP/UDP and
+MTU checks, test ordinary application stop/recovery and measure resources under
+load. A single connected phone does not prove three-device acceptance. Real
+CAPTCHA and extended stability remain unverified. Reboot, USB removal and
+disruptive WAN/server tests require separate explicit authorization; do not run
+them now. No public installable preview is qualified by the evidence above.
