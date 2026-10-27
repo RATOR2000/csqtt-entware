@@ -1,0 +1,62 @@
+name: Manager, bridge and package checks
+on:
+  push:
+    paths:
+      - 'cmd/**'
+      - 'internal/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'vendor/golang.org/**'
+      - 'vendor/golang.zx2c4.com/**'
+      - 'vendor/modules.txt'
+      - 'packaging/**'
+      - 'scripts/package.py'
+      - 'scripts/install.sh'
+      - 'tests/**'
+      - '.github/workflows/go-check.yml'
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  host-checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.8'
+      - name: Unit and concurrency checks
+        env:
+          CGO_ENABLED: '1'
+        run: |
+          go test -race -count=1 ./...
+          go vet ./...
+      - name: Packaging contracts
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
+  mips-manager:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.8'
+      - name: Build MIPS soft-float manager
+        env:
+          GOOS: linux
+          GOARCH: mipsle
+          GOMIPS: softfloat
+          CGO_ENABLED: '0'
+        run: |
+          mkdir -p dist
+          go build -trimpath -ldflags '-s -w -buildid=' -o dist/csqtt-entware ./cmd/csqtt-entware
+          (cd dist && sha256sum csqtt-entware > csqtt-entware.sha256)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: csqtt-manager-entware-mipsel
+          path: |
+            dist/csqtt-entware
+            dist/csqtt-entware.sha256
+          retention-days: 14

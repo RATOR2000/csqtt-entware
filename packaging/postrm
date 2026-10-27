@@ -1,0 +1,3 @@
+#!/bin/sh
+# Settings, CSQTT identity, WireGuard keys and native policy remain owner data.
+exit 0

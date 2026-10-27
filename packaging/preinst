@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+[ -n "${IPKG_INSTROOT:-}" ] && exit 0
+if [ -x /opt/etc/init.d/S90csqtt ]; then /opt/etc/init.d/S90csqtt stop; fi

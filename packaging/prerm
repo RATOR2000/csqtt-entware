@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+[ -n "${IPKG_INSTROOT:-}" ] && exit 0
+/opt/etc/init.d/S90csqtt stop
+# Preserve native WireGuard/policy configuration: removing the transport must
+# never create an implicit WAN fallback for its assigned devices.

@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+[ -n "${IPKG_INSTROOT:-}" ] && exit 0
+umask 077
+mkdir -p /opt/etc/csqtt /opt/var/run/csqtt
+chmod 700 /opt/etc/csqtt /opt/var/run/csqtt
+if [ ! -f /opt/etc/csqtt/listen ]; then printf '%s\n' '192.168.2.1:8080' > /opt/etc/csqtt/listen; fi
+chmod 600 /opt/etc/csqtt/listen
+/opt/etc/init.d/S90csqtt start
