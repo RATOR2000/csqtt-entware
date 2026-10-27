@@ -142,7 +142,13 @@ fn main() {
     if early.get(1).map(String::as_str) == Some("--recovery-step") {
         std::process::exit(if early.len() == 3 { recovery_step::run_cli(&early[2]) } else { 2 });
     }
-    std::panic::set_hook(Box::new(|_| {
+    std::panic::set_hook(Box::new(|info| {
+        // Source location is diagnostic; the panic payload can contain private
+        // server/authentication data and must never be printed.
+        if let Some(location) = info.location() {
+            let file = location.file().rsplit(['/', '\\']).next().unwrap_or("unknown");
+            eprintln!("[PANIC_LOCATION] {file}:{}", location.line());
+        }
         #[cfg(unix)]
         unsafe {
             const MESSAGE: &[u8] = b"[PANIC] Rust client task failed\n";
