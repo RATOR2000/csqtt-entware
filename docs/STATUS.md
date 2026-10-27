@@ -62,7 +62,15 @@ installable preview or qualified VPN release has been published.
   to loopback; its actual MTU was corrected and verified as 1280, with MSS on.
 - One owner-supplied LAN phone is assigned to the WG-only CSQTT policy. Native
   conntrack confirms its public TCP/UDP flows are NATed into the CSQTT address;
-  this is evidence beyond a local handshake, but not complete acceptance.
+  the owner also confirmed browsing and the VPN server's external exit address.
+- Policy-routed native tests passed DNS over UDP/TCP and certificate-verified
+  HTTPS. The provider and VPN exit addresses differ. A unique DNS lookup from
+  the phone was captured through the WG-bound resolver without a matching WAN
+  query. Private captures and exact measurements remain outside Git.
+- Short native transfer/resource checks passed without memory pressure. They
+  show a CPU bottleneck and do not establish three-device or sustained-load
+  acceptance. A private, temporary CPU profiling build is prepared to locate
+  the cost before considering changes; it adds no public diagnostic endpoint.
 - The WG DNS is interface-specific; no global Any DNS, DoH/DoT or filtering
   override was found. No global IPv6 address or IPv6 route is currently active.
 - KeeneticOS 3.8 keeps every connection in its immutable built-in Default
@@ -71,6 +79,8 @@ installable preview or qualified VPN release has been published.
   Default policy is unused; the phone retains its explicit CSQTT assignment.
 - Explicit-tag bootstrap, checksum/redirect validation, four offline tests and
   native staging limits passed at `0e77a03`. No release URL is published yet.
+- Go/package CI 40601885309 passed at `3ad639d`, including the corrected panel
+  policy instructions. These sources are fast-forwarded to the new repo's main.
 
 ## Ownership and handoff
 
@@ -80,9 +90,10 @@ installable preview or qualified VPN release has been published.
 
 ## Next
 
-Confirm the phone's external exit and browser behavior, finish DNS/TCP/UDP and
-MTU checks, test ordinary application stop/recovery and measure resources under
-load. A single connected phone does not prove three-device acceptance. Real
+Complete the active ordinary application stop/recovery check with the phone,
+inspect the private CPU profile, then install the normal candidate and check
+recovery/profile identity. A single connected phone does not prove three-device
+acceptance. Real
 CAPTCHA and extended stability remain unverified. Reboot, USB removal and
 disruptive WAN/server tests require separate explicit authorization; do not run
 them now. No public installable preview is qualified by the evidence above.
