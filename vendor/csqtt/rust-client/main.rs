@@ -15,6 +15,7 @@ mod daemon;
 mod dispatcher;
 mod dns;
 mod events;
+mod entropy;
 #[path = "../shared/flow_frame.rs"]
 mod flow_frame;
 mod liveness;

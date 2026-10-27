@@ -86,6 +86,8 @@ PY
   )
   python3 "$root/scripts/check-core-elf.py" "$test_exe"
   for test_name in \
+    entropy::tests::operating_system_entropy_and_uuid_are_available \
+    daemon::tests::persistent_identity_survives_restart_and_locks_parallel_instances \
     atomic::tests::portable_generations_cross_32_bits_under_contention \
     wrap::tests::known_wire_vector \
     obfs::tests::unwraps_go_audio_and_video_vectors; do
