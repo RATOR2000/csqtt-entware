@@ -111,6 +111,19 @@ installable preview or qualified VPN release has been published.
 - Native SSH management authentication and commands, Entware SSH and web access
   were checked. Temporary compiler, tracer, packet-capture tools, preload shim
   and profiling executables were removed from the router after normal recovery.
+- The owner explicitly authorized a router reboot and a bounded server-link
+  fault. Both passed. A source-routing-aware blackhole test blocked only the
+  core's public transport destinations, preserved provider-policy HTTPS, and
+  automatically removed its own routes before VPN connectivity recovered.
+  Injection must cover the native per-source table as well as main; derive the
+  current table from rules rather than assuming main routes cover connected UDP.
+- A changed boot ID confirmed a real reboot. Entware and the enabled client
+  started automatically with nine channels; settings, UUID, WG interface and
+  policy blocks were checked unchanged. Native management ports remained
+  available; post-boot native WG DNS UDP/TCP and verified HTTPS passed.
+- The owner can provide only one physical phone. Three concurrent streams and
+  one real phone are verified; three physical clients must not be claimed as
+  tested. Native SSH forwarding is available for USB-independent diagnostics.
 
 ## Ownership and handoff
 
@@ -120,9 +133,10 @@ installable preview or qualified VPN release has been published.
 
 ## Next
 
-The working normal candidate is connected. Finish acceptance for three physical
-devices, extended stability and a real CAPTCHA if VK requests it. Reboot, USB
-removal and disruptive WAN/server tests require separate explicit authorization;
-do not run them without it. Prepare the final versioned release and test its
-actual one-command download only after the required acceptance gates pass.
-No public installable preview is qualified by the evidence above.
+The working normal candidate is connected. USB-unavailable testing still needs
+separate explicit authorization and a planned reattachment; do not remove/eject
+USB yet. Extended stability and a real CAPTCHA remain unverified. Only one
+physical test device is available. Keep those limits explicit before deciding
+the first preview's qualification scope. Prepare the final versioned release
+and test its actual one-command download after its acceptance gates pass.
+No public installable preview has been published.
