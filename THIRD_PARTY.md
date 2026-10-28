@@ -35,3 +35,9 @@ license-expression substitution or network license lookup.
 The patched `primp` 1.3.1 source retains its original MIT notice, restored from
 [the published 1.3.1 crate](https://static.crates.io/crates/primp/primp-1.3.1.crate)
 (crate SHA256 `de5af71998859143057235d9e4985849c2c5da1f882425c93bcb3dfda229d525`).
+
+The published `alloc-stdlib` 0.2.4 subcrate omits its repository-root LICENSE.
+`packaging/notices/alloc-stdlib-0.2.4/LICENSE` preserves the verbatim Dropbox
+notice from [the revision pinned by that crate's `.cargo_vcs_info.json`](https://github.com/dropbox/rust-alloc-no-stdlib/blob/ae42d22078b98549e987d2f03d12df7b984fde47/LICENSE).
+The collector permits this explicit supplement only for the exact locked crate
+checksum and verified notice checksum, and records its origin in the manifest.

@@ -135,6 +135,39 @@ class NoticeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing notice"):
             notices.cargo_components(self.metadata, self.lock, self.root, {})
 
+    def test_supplement_requires_exact_locked_identity_and_verbatim_upstream_bytes(self):
+        for path in notices.notice_files(self.aws):
+            path.unlink()
+        raw = b"Fixture upstream copyright and permission notice.\n"
+        path = "packaging/notices/fixture/LICENSE"
+        supplement = self.write(path, raw)
+        origin = "https://example.test/upstream/0123456789abcdef/LICENSE"
+        expected = notices.digest(raw)
+        mapping = {("aws-lc-sys", "0.44.0", "a" * 64): (path, expected, origin)}
+        with patch.object(notices, "CARGO_SUPPLEMENTS", mapping):
+            entries = unpack(self.core_bundle())
+            manifest = json.loads(entries["manifest.json"])
+            aws = next(c for c in manifest["components"] if c["name"] == "aws-lc-sys")
+            self.assertEqual(aws["files"], [{"path": "LICENSE", "member": f"texts/{expected}.txt",
+                                             "sha256": expected, "origin": origin}])
+            self.assertEqual(entries[aws["files"][0]["member"]], raw)
+            self.assertEqual(manifest["inputs"][path], expected)
+            serialized = entries["manifest.json"].decode().replace("\\\\", "\\")
+            self.assertNotIn(str(self.root), serialized)
+            self.assertNotIn(self.root.as_posix(), serialized)
+            for field, wrong in (("name", "different-crate"), ("version", "0.44.1"),
+                                 ("checksum", "c" * 64)):
+                with self.subTest(field=field):
+                    metadata, lock = copy.deepcopy(self.metadata), copy.deepcopy(self.lock)
+                    lock["package"][1][field] = wrong
+                    if field != "checksum":
+                        metadata["packages"][1][field] = wrong
+                    with self.assertRaisesRegex(ValueError, "missing notice"):
+                        notices.cargo_components(metadata, lock, self.root, {})
+            supplement.write_bytes(raw + b"changed")
+            with self.assertRaisesRegex(ValueError, "supplemental upstream notice hash mismatch"):
+                notices.cargo_components(self.metadata, self.lock, self.root, {})
+
     def test_license_file_rejects_unsafe_relative_paths(self):
         for path in ("../LICENSE", "/LICENSE", "legal//terms.txt", "./LICENSE", "C:/LICENSE", "legal\\terms.txt"):
             with self.subTest(path=path):

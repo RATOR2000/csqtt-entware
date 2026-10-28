@@ -7,6 +7,7 @@ on:
       - 'scripts/build-core.sh'
       - 'scripts/check-core-elf.py'
       - 'scripts/notices.py'
+      - 'packaging/notices/**'
       - '.github/workflows/core-build.yml'
   pull_request:
     paths:
@@ -15,6 +16,7 @@ on:
       - 'scripts/build-core.sh'
       - 'scripts/check-core-elf.py'
       - 'scripts/notices.py'
+      - 'packaging/notices/**'
       - '.github/workflows/core-build.yml'
   workflow_dispatch:
 permissions:

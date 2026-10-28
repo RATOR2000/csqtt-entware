@@ -20,6 +20,14 @@ MAX_TOTAL = 32 * 1024 * 1024
 MAX_FILES = 4096
 NOTICE = re.compile(r"^(?:licen[cs]e|copying|notice|copyright|authors|patents)(?:[._-].*)?$", re.I)
 TEXT_MEMBER = re.compile(r"texts/[0-9a-f]{64}\.txt")
+# The published subcrate omits the repository-root LICENSE. Its packaged
+# .cargo_vcs_info.json pins this exact revision; never synthesize SPDX text.
+CARGO_SUPPLEMENTS = {
+    ("alloc-stdlib", "0.2.4", "0e76a019e91224d279006ff972f1e984179a6e9feb050adba6ce8274aef23195"): (
+        "packaging/notices/alloc-stdlib-0.2.4/LICENSE",
+        "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae",
+        "https://raw.githubusercontent.com/dropbox/rust-alloc-no-stdlib/ae42d22078b98549e987d2f03d12df7b984fde47/LICENSE"),
+}
 
 
 def digest(data: bytes) -> str:
@@ -31,6 +39,8 @@ def inputs(kind: str, root: Path = ROOT) -> dict[str, str]:
              "vendor/csqtt/rust-client/vendor/primp/Cargo.toml",
              "vendor/csqtt/rust-client/vendor/primp/LICENSE-MIT") if kind == "core" else (
                  "go.mod", "go.sum", "vendor/modules.txt")
+    if kind == "core":
+        names += tuple(item[0] for item in CARGO_SUPPLEMENTS.values() if (root / item[0]).is_file())
     return {name: digest((root / name).read_bytes()) for name in names}
 
 
@@ -108,7 +118,16 @@ def cargo_components(metadata: dict, lock: dict, root: Path, texts: dict[str, by
                 directory, files = root / "vendor/csqtt", [root / "vendor/csqtt/LICENSE"]
         elif source != "registry+https://github.com/rust-lang/crates.io-index" or not pinned.get("checksum"):
             raise ValueError("unsupported or unverified Cargo source")
+        supplement = CARGO_SUPPLEMENTS.get((name, version, pinned.get("checksum"))) if not files else None
+        if supplement:
+            path, expected, origin = supplement
+            notice = root / path
+            if digest(notice.read_bytes()) != expected:
+                raise ValueError("supplemental upstream notice hash mismatch")
+            directory, files = notice.parent, [notice]
         entry = component(name, version, source, package.get("license"), directory, files, texts)
+        if supplement:
+            entry["files"][0]["origin"] = supplement[2]
         if pinned.get("checksum"):
             entry["crate_sha256"] = pinned["checksum"]
         result.append(entry)

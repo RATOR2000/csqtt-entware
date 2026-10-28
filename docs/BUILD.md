@@ -36,7 +36,7 @@ Go-зависимостей сначала выполняется в отдел�
 ## Rust: ядро CSQTT
 
 Сборка определена в `scripts/build-core.sh` и workflow `core-build.yml`.
-Нужны Ubuntu 24.04, Rust **1.97.1** с `rust-src`, Python 3, curl, tar,
+Нужны Ubuntu 24.04, Rust **1.97.1** с `rust-src`, Python 3.11+, curl, tar,
 `gcc-mipsel-linux-gnu`, `g++-mipsel-linux-gnu`, `binutils-mipsel-linux-gnu`
 и `qemu-user`.
 
@@ -61,7 +61,10 @@ metadata вызывается с `--locked --offline` и той же целев�
 Тексты лицензий/NOTICE берутся из уже загруженных crate, включая вложенные
 библиотеки; для `std` берутся `COPYRIGHT-library.html` и лицензии установленного
 Rust. Отсутствующий текст останавливает сборку. Сетевой поиск или подстановка
-текста только по SPDX-выражению не используются.
+текста только по SPDX-выражению не используются. Единственное явно закреплённое
+дополнение — оригинальный LICENSE для `alloc-stdlib` 0.2.4, отсутствующий в
+опубликованном subcrate; его исходный commit и хеши описаны в
+[THIRD_PARTY.md](../THIRD_PARTY.md).
 
 Успешные тесты хоста не заменяют ABI-проверку. Эмуляция не заменяет запуск
 на KN-1710 и реальную авторизацию VK.
