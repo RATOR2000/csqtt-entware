@@ -124,6 +124,14 @@ installable preview or qualified VPN release has been published.
 - The owner can provide only one physical phone. Three concurrent streams and
   one real phone are verified; three physical clients must not be claimed as
   tested. Native SSH forwarding is available for USB-independent diagnostics.
+- After separate owner authorization, the external EXT4 USB volume was safely
+  disconnected through Keenetic and reconnected in software. A temporary static
+  probe ran entirely in RAM with cached CA roots and was observed through native
+  SSH forwarding: VPN HTTPS failed while provider HTTPS and native management
+  remained available. Physical surprise removal was not performed or claimed.
+- USB reattachment automatically restarted Entware/CSQTT with nine channels.
+  Persistent settings, WG keys and UUID were verified unchanged; native WG DNS
+  UDP/TCP and verified HTTPS passed again. The RAM probe was removed afterward.
 
 ## Ownership and handoff
 
@@ -133,10 +141,8 @@ installable preview or qualified VPN release has been published.
 
 ## Next
 
-The working normal candidate is connected. USB-unavailable testing still needs
-separate explicit authorization and a planned reattachment; do not remove/eject
-USB yet. Extended stability and a real CAPTCHA remain unverified. Only one
-physical test device is available. Keep those limits explicit before deciding
-the first preview's qualification scope. Prepare the final versioned release
-and test its actual one-command download after its acceptance gates pass.
-No public installable preview has been published.
+The working normal candidate is connected. Longer stability and a real CAPTCHA
+remain unverified; only one physical test device is available. Keep those limits
+explicit before deciding the first preview's qualification scope. Prepare the
+final versioned release and test its actual one-command download after its
+acceptance gates pass. No public installable preview has been published.
