@@ -12,6 +12,7 @@ on:
       - 'packaging/**'
       - 'scripts/package.py'
       - 'scripts/install.sh'
+      - 'scripts/bootstrap.sh'
       - 'tests/**'
       - '.github/workflows/go-check.yml'
   pull_request:

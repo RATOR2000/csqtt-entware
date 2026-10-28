@@ -93,6 +93,24 @@ installable preview or qualified VPN release has been published.
   so repeating the future one-command installer repairs modified program files.
   Owner settings remain outside the payload and are backed up. Eleven host
   packaging/bootstrap tests and shell syntax checks passed after this change.
+- Go/package CI 40714188038 passed at `45ecde8`. A real same-version reinstall
+  then replaced the temporary profiling executable and preserved owner settings;
+  hashes of both normal installed and running ELFs match the packaged builds.
+- Full manager/bridge stop was tested automatically with native policy-marked
+  sockets: WG DNS UDP/TCP and HTTPS failed, provider-policy HTTPS and native LAN
+  management remained available. Startup restored the complete VPN path.
+- A separately verified SIGTERM to the owned core triggered automatic recovery
+  to nine channels and working native WG DNS/HTTPS. Device UUID, WG keys and
+  settings stayed stable. The identity generation counter correctly advances
+  on restart; it is not the persistent device identifier.
+- Three concurrent bounded HTTPS downloads passed, followed by repeated
+  three-stream bursts and panel/memory monitoring. All sampled panel requests
+  completed and the available-memory acceptance margin was retained. This is
+  a short synthetic load test on one physical LAN client, not three-device or
+  extended-duration qualification. Exact captures and measurements stay private.
+- Native SSH management authentication and commands, Entware SSH and web access
+  were checked. Temporary compiler, tracer, packet-capture tools, preload shim
+  and profiling executables were removed from the router after normal recovery.
 
 ## Ownership and handoff
 
@@ -102,9 +120,9 @@ installable preview or qualified VPN release has been published.
 
 ## Next
 
-Finish the private CPU profile with an actual successful transfer, restore and
-hash the normal candidate, and complete automated bridge stop/recovery checks.
-A single connected phone does not prove three-device acceptance. Real
-CAPTCHA and extended stability remain unverified. Reboot, USB removal and
-disruptive WAN/server tests require separate explicit authorization; do not run
-them now. No public installable preview is qualified by the evidence above.
+The working normal candidate is connected. Finish acceptance for three physical
+devices, extended stability and a real CAPTCHA if VK requests it. Reboot, USB
+removal and disruptive WAN/server tests require separate explicit authorization;
+do not run them without it. Prepare the final versioned release and test its
+actual one-command download only after the required acceptance gates pass.
+No public installable preview is qualified by the evidence above.
