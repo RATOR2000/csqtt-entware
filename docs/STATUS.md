@@ -81,6 +81,18 @@ installable preview or qualified VPN release has been published.
   native staging limits passed at `0e77a03`. No release URL is published yet.
 - Go/package CI 40601885309 passed at `3ad639d`, including the corrected panel
   policy instructions. These sources are fast-forwarded to the new repo's main.
+- Ordinary application disconnect stopped both CSQTT and the userspace WG
+  bridge. The phone retained its LAN panel access and a fresh external HTTPS
+  request in a private tab failed. A previously displayed page was not counted
+  as connectivity evidence. Reconnection then passed native DNS UDP/TCP and
+  verified HTTPS with a distinct provider exit, without further phone actions.
+- Normal candidate `0.1.0~dev6` installed and preserved settings/WG keys across
+  the upgrade. Temporary CPU profiling uses private overlay builds only and is
+  followed by reinstalling and hashing the normal disk and running executable.
+- Installer now forces same-version payload reinstallation as well as upgrades,
+  so repeating the future one-command installer repairs modified program files.
+  Owner settings remain outside the payload and are backed up. Eleven host
+  packaging/bootstrap tests and shell syntax checks passed after this change.
 
 ## Ownership and handoff
 
@@ -90,10 +102,9 @@ installable preview or qualified VPN release has been published.
 
 ## Next
 
-Complete the active ordinary application stop/recovery check with the phone,
-inspect the private CPU profile, then install the normal candidate and check
-recovery/profile identity. A single connected phone does not prove three-device
-acceptance. Real
+Finish the private CPU profile with an actual successful transfer, restore and
+hash the normal candidate, and complete automated bridge stop/recovery checks.
+A single connected phone does not prove three-device acceptance. Real
 CAPTCHA and extended stability remain unverified. Reboot, USB removal and
 disruptive WAN/server tests require separate explicit authorization; do not run
 them now. No public installable preview is qualified by the evidence above.

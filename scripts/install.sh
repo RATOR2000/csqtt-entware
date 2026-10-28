@@ -89,7 +89,9 @@ if [ "$#" -eq 3 ] || [ ! -f /opt/etc/csqtt/listen ]; then
     printf '%s\n' "$listen" > /opt/etc/csqtt/listen
     chmod 600 /opt/etc/csqtt/listen
 fi
-opkg install "$artifact" || fail 'installation failed; settings backup was retained'
+# Repeating the one-command installation must also repair the same version.
+# Owner settings are not package payload and have already been backed up.
+opkg --force-reinstall install "$artifact" || fail 'installation failed; settings backup was retained'
 verify_payload || fail 'incomplete package extraction; settings backup was retained'
 printf '%s\n' "CSQTT manager installed: http://$listen/"
 printf '%s\n' 'This confirms package installation only. Configure CSQTT and verify the full VPN path in the panel.'
