@@ -42,10 +42,31 @@ class PackagingTests(unittest.TestCase):
         self.manager = Path(self.tmp.name) / "csqtt-entware"
         self.core.write_bytes(elf())
         self.manager.write_bytes(elf(isa=0x50001000))
+        self.notice_bundles = []
+        for kind, binary, toolchain, filenames in (
+                ("core", self.core, "rustc 1.97.1", ("COPYRIGHT-library.html", "LICENSE-MIT", "LICENSE-APACHE")),
+                ("manager", self.manager, "go1.26.8", ("LICENSE", "PATENTS"))):
+            directory = Path(self.tmp.name) / kind
+            directory.mkdir()
+            for name in filenames:
+                (directory / name).write_text("fixture " + name)
+            texts = {}
+            runtime = "rust-runtime" if kind == "core" else "go-runtime"
+            components = [package.notices.component(runtime, "fixture", "fixture", None,
+                          directory, list(directory.iterdir()), texts)]
+            if kind == "core":
+                components += [package.notices.component("csqtt-client", "2.1.9", "fixture", None,
+                               ROOT, [ROOT / "LICENSE"], texts)]
+            bundle = Path(self.tmp.name) / (kind + "-notices.tar.gz")
+            bundle.write_bytes(package.notices.bundle(kind, binary, toolchain, "0" * 40, components, texts))
+            self.notice_bundles.append(bundle)
+
+    def build(self, version):
+        return package.build(self.core, self.manager, version, *self.notice_bundles)
 
     def test_deterministic_ipk_and_safe_payload(self):
-        first = package.build(self.core, self.manager, "0.1.0~dev1")
-        self.assertEqual(first, package.build(self.core, self.manager, "0.1.0~dev1"))
+        first = self.build("0.1.0~dev1")
+        self.assertEqual(first, self.build("0.1.0~dev1"))
         archive = members(first)
         self.assertEqual(set(archive), {"debian-binary", "control.tar.gz", "data.tar.gz"})
         self.assertEqual(archive["debian-binary"], b"2.0\n")
@@ -56,6 +77,9 @@ class PackagingTests(unittest.TestCase):
             self.assertEqual(tar.getmember("opt/etc/init.d/S90csqtt").mode, 0o755)
             self.assertFalse(any(name == "opt/etc/csqtt" or name.startswith("opt/etc/csqtt/") for name in names))
             self.assertIn("opt/share/licenses/csqtt-entware/golang.zx2c4.com/wireguard/LICENSE", names)
+            self.assertIn("opt/share/licenses/csqtt-entware/golang.org/x/crypto/PATENTS", names)
+            self.assertIn("opt/share/licenses/csqtt-entware/core-notices/manifest.json", names)
+            self.assertIn("opt/share/licenses/csqtt-entware/manager-notices/manifest.json", names)
             for item in tar.getmembers():
                 self.assertTrue(item.isfile() or item.isdir())
                 if item.isdir():
@@ -65,7 +89,7 @@ class PackagingTests(unittest.TestCase):
                 self.assertLess(item.mode & 0o002, 1)
 
     def test_payload_directories_precede_every_file_parent(self):
-        archive = members(package.build(self.core, self.manager, "0.1.0~dev2"))
+        archive = members(self.build("0.1.0~dev2"))
         with tarfile.open(fileobj=io.BytesIO(archive["data.tar.gz"])) as tar:
             seen = set()
             for item in tar.getmembers():
@@ -82,7 +106,7 @@ class PackagingTests(unittest.TestCase):
             self.assertTrue(all(item.isfile() for item in tar.getmembers()))
 
     def test_control_hooks_and_offline_install_boundary(self):
-        archive = members(package.build(self.core, self.manager, "0.1.0~dev1"))
+        archive = members(self.build("0.1.0~dev1"))
         with tarfile.open(fileobj=io.BytesIO(archive["control.tar.gz"])) as tar:
             control = tar.extractfile("control").read().decode()
             self.assertIn("Architecture: mipsel-3.4\n", control)
@@ -108,15 +132,25 @@ class PackagingTests(unittest.TestCase):
         for data in (b"", elf(machine=62), elf(isa=0x60001000), b"MZ" + bytes(100)):
             self.core.write_bytes(data)
             with self.assertRaises(ValueError):
-                package.build(self.core, self.manager, "0.1.0~dev1")
+                self.build("0.1.0~dev1")
         data = elf(); data[5] = 2; self.core.write_bytes(data)
         with self.assertRaises(ValueError):
-            package.build(self.core, self.manager, "0.1.0~dev1")
+            self.build("0.1.0~dev1")
 
     def test_rejects_control_and_path_injection_in_version(self):
         for version in ("", "1\nArchitecture: all", "../../bad", "1/../../bad", "1;reboot"):
             with self.assertRaises(ValueError):
-                package.build(self.core, self.manager, version)
+                self.build(version)
+
+    def test_rejects_missing_notices_for_preview(self):
+        self.notice_bundles[0].unlink()
+        with self.assertRaises(FileNotFoundError):
+            self.build("0.1.0~preview.1")
+
+    def test_rejects_notices_from_another_binary(self):
+        self.manager.write_bytes(elf(isa=0x50001000) + b"changed")
+        with self.assertRaisesRegex(ValueError, "provenance"):
+            self.build("0.1.0~preview.1")
 
     def test_installer_postcondition_detects_partial_extraction(self):
         if os.name == "nt":
@@ -131,7 +165,7 @@ class PackagingTests(unittest.TestCase):
                 self.skipTest("POSIX sh is unavailable")
         script = (ROOT / "scripts/install.sh").read_text()
         function = re.search(r"^verify_payload\(\) \{\n.*?^\}", script, re.M | re.S).group(0)
-        manifest = members(package.build(self.core, self.manager, "0.1.0~dev2"))
+        manifest = members(self.build("0.1.0~dev2"))
         root = Path(self.tmp.name) / "installed"
         paths = []
         with tarfile.open(fileobj=io.BytesIO(manifest["data.tar.gz"])) as payload:

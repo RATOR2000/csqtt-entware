@@ -15,3 +15,23 @@ affiliated with Keenetic or VK.
 WireGuard Go and Go module dependencies retain their upstream licenses in the
 vendored source and module metadata. The WireGuard engine has a documented
 bounded queue/buffer profile for this embedded target.
+
+Binary IPKs also install the three Go module PATENTS files and verified notice
+bundles under `/opt/share/licenses/csqtt-entware/{core,manager}-notices/`.
+Each bundle has a `manifest.json` mapping original component paths to verbatim,
+content-addressed notice texts, with the executable SHA256, locked input hashes,
+collector source revision and pinned toolchain version. Source links alone do
+not replace these distributed notices.
+
+The core bundle uses Cargo's locked, offline target resolve graph and the
+already-downloaded crate sources. It preserves nested license/NOTICE files,
+including bundled native code; build/test dependencies in that graph are kept
+as a conservative superset. Rust's pinned `COPYRIGHT-library.html` and runtime
+license texts cover the rebuilt standard library and its dependencies. The
+manager bundle preserves the pinned Go toolchain LICENSE/PATENTS and nested
+source notices, also as a conservative superset. Bundle collection performs no
+license-expression substitution or network license lookup.
+
+The patched `primp` 1.3.1 source retains its original MIT notice, restored from
+[the published 1.3.1 crate](https://static.crates.io/crates/primp/primp-1.3.1.crate)
+(crate SHA256 `de5af71998859143057235d9e4985849c2c5da1f882425c93bcb3dfda229d525`).

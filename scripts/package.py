@@ -9,10 +9,13 @@ import io
 from pathlib import Path, PurePosixPath
 import re
 import struct
+import sys
 import tarfile
 
 ROOT = Path(__file__).resolve().parents[1]
 ARCH = "mipsel-3.4"
+sys.path.insert(0, str(ROOT / "scripts"))
+import notices
 
 
 def mips_elf(path: Path) -> bytes:
@@ -60,7 +63,7 @@ def tar_gz(entries: list[tuple[str, bytes, int]], *, ordered: bool = False,
     return output.getvalue()
 
 
-def build(core: Path, manager: Path, version: str) -> bytes:
+def build(core: Path, manager: Path, version: str, core_notices: Path, manager_notices: Path) -> bytes:
     if not re.fullmatch(r"[0-9][0-9A-Za-z.+~_-]{0,63}", version):
         raise ValueError("invalid package version")
     payloads = [("opt/bin/csqtt-client", mips_elf(core), 0o755),
@@ -70,8 +73,15 @@ def build(core: Path, manager: Path, version: str) -> bytes:
         payloads.append(("opt/share/licenses/csqtt-entware/" + name, (ROOT / source).read_bytes(), 0o644))
     for module in ("golang.zx2c4.com/wireguard", "golang.zx2c4.com/wintun",
                    "golang.org/x/crypto", "golang.org/x/net", "golang.org/x/sys"):
-        payloads.append(("opt/share/licenses/csqtt-entware/" + module + "/LICENSE",
-                         (ROOT / "vendor" / module / "LICENSE").read_bytes(), 0o644))
+        for name in ("LICENSE", "PATENTS"):
+            path = ROOT / "vendor" / module / name
+            if name == "LICENSE" or path.is_file():
+                payloads.append(("opt/share/licenses/csqtt-entware/" + module + "/" + name,
+                                 path.read_bytes(), 0o644))
+    for kind, binary, bundle in (("core", payloads[0][1], core_notices),
+                                 ("manager", payloads[1][1], manager_notices)):
+        for name, data in notices.verify(bundle.read_bytes(), kind, binary).items():
+            payloads.append((f"opt/share/licenses/csqtt-entware/{kind}-notices/{name}", data, 0o644))
     control = (f"Package: csqtt-entware\nVersion: {version}\nArchitecture: {ARCH}\n"
                "Maintainer: CSQTT Entware contributors\nSection: net\nPriority: optional\n"
                "License: PolyForm-Noncommercial-1.0.0\n"
@@ -96,11 +106,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--core", type=Path, default=ROOT / "dist/csqtt-client")
     parser.add_argument("--manager", type=Path, default=ROOT / "dist/csqtt-entware")
+    parser.add_argument("--core-notices", type=Path, default=ROOT / "dist/csqtt-client-notices.tar.gz")
+    parser.add_argument("--manager-notices", type=Path, default=ROOT / "dist/csqtt-entware-notices.tar.gz")
     parser.add_argument("--version", default="0.1.0~dev4")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     output = args.output or ROOT / f"dist/csqtt-entware_{args.version}_{ARCH}.ipk"
-    package = build(args.core, args.manager, args.version)
+    package = build(args.core, args.manager, args.version, args.core_notices, args.manager_notices)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_bytes(package)
     digest = hashlib.sha256(package).hexdigest()

@@ -24,7 +24,9 @@ verify_payload() {
     done
     for license in LICENSE THIRD_PARTY.md golang.zx2c4.com/wireguard/LICENSE \
         golang.zx2c4.com/wintun/LICENSE golang.org/x/crypto/LICENSE \
-        golang.org/x/net/LICENSE golang.org/x/sys/LICENSE; do
+        golang.org/x/net/LICENSE golang.org/x/sys/LICENSE \
+        golang.org/x/crypto/PATENTS golang.org/x/net/PATENTS golang.org/x/sys/PATENTS \
+        core-notices/manifest.json manager-notices/manifest.json; do
         test -s "$verify_root/opt/share/licenses/csqtt-entware/$license" || return 1
     done
 }

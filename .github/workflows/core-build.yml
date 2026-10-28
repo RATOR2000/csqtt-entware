@@ -6,6 +6,7 @@ on:
       - 'targets/**'
       - 'scripts/build-core.sh'
       - 'scripts/check-core-elf.py'
+      - 'scripts/notices.py'
       - '.github/workflows/core-build.yml'
   pull_request:
     paths:
@@ -13,6 +14,7 @@ on:
       - 'targets/**'
       - 'scripts/build-core.sh'
       - 'scripts/check-core-elf.py'
+      - 'scripts/notices.py'
       - '.github/workflows/core-build.yml'
   workflow_dispatch:
 permissions:
@@ -73,4 +75,6 @@ jobs:
           path: |
             dist/csqtt-client
             dist/csqtt-client.sha256
+            dist/csqtt-client-notices.tar.gz
+            dist/csqtt-client-notices.tar.gz.sha256
           retention-days: 14

@@ -95,3 +95,5 @@ PY
       --library-path "$work/sysroot/opt/lib" "$test_exe" --exact "$test_name"
   done
 fi
+python3 "$root/scripts/notices.py" core --binary "$root/dist/csqtt-client" \
+  --target "$work/$target.json" --output "$root/dist/csqtt-client-notices.tar.gz"

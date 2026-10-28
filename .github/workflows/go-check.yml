@@ -11,6 +11,7 @@ on:
       - 'vendor/modules.txt'
       - 'packaging/**'
       - 'scripts/package.py'
+      - 'scripts/notices.py'
       - 'scripts/install.sh'
       - 'scripts/bootstrap.sh'
       - 'tests/**'
@@ -54,10 +55,13 @@ jobs:
           mkdir -p dist
           go build -trimpath -ldflags '-s -w -buildid=' -o dist/csqtt-entware ./cmd/csqtt-entware
           (cd dist && sha256sum csqtt-entware > csqtt-entware.sha256)
+          python3 scripts/notices.py manager --binary dist/csqtt-entware --output dist/csqtt-entware-notices.tar.gz
       - uses: actions/upload-artifact@v4
         with:
           name: csqtt-manager-entware-mipsel
           path: |
             dist/csqtt-entware
             dist/csqtt-entware.sha256
+            dist/csqtt-entware-notices.tar.gz
+            dist/csqtt-entware-notices.tar.gz.sha256
           retention-days: 14
