@@ -73,11 +73,10 @@ def build(core: Path, manager: Path, version: str, core_notices: Path, manager_n
         payloads.append(("opt/share/licenses/csqtt-entware/" + name, (ROOT / source).read_bytes(), 0o644))
     for module in ("golang.zx2c4.com/wireguard", "golang.zx2c4.com/wintun",
                    "golang.org/x/crypto", "golang.org/x/net", "golang.org/x/sys"):
-        for name in ("LICENSE", "PATENTS"):
+        for name in (("LICENSE", "PATENTS") if module.startswith("golang.org/x/") else ("LICENSE",)):
             path = ROOT / "vendor" / module / name
-            if name == "LICENSE" or path.is_file():
-                payloads.append(("opt/share/licenses/csqtt-entware/" + module + "/" + name,
-                                 path.read_bytes(), 0o644))
+            payloads.append(("opt/share/licenses/csqtt-entware/" + module + "/" + name,
+                             path.read_bytes(), 0o644))
     for kind, binary, bundle in (("core", payloads[0][1], core_notices),
                                  ("manager", payloads[1][1], manager_notices)):
         for name, data in notices.verify(bundle.read_bytes(), kind, binary).items():
