@@ -1,0 +1,64 @@
+name: Preview candidate assembly
+on:
+  push:
+    paths:
+      - '.github/workflows/preview-candidate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  assemble:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      VERSION: '0.1.0-preview.1'
+      SOURCE: '89926ea2310049dd42930781d786a5fdee27493c'
+      CORE_SHA256: '24612616818a1ecccb36306ed280db967923e667a2b92f675a8f533cdcf78459'
+      MANAGER_SHA256: 'ee154d78ccd256cf5c7421d547ff64dc9d957afaeee89e2b1342ad346c0b3809'
+      PACKAGE_SHA256: 'dc3e59491cc118d6f1672759882eeba3a5c86f292f3c069f156b61aef6c79307'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: '89926ea2310049dd42930781d786a5fdee27493c'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.8'
+      - uses: actions/download-artifact@v4
+        with:
+          name: csqtt-client-entware-mipsel
+          run-id: 40938169686
+          github-token: ${{ github.token }}
+          path: dist
+      - name: Rebuild the tested manager and notice bundle
+        env:
+          GOOS: linux
+          GOARCH: mipsle
+          GOMIPS: softfloat
+          CGO_ENABLED: '0'
+        run: |
+          go build -buildvcs=false -trimpath -ldflags "-s -w -buildid= -X main.version=$VERSION" -o dist/csqtt-entware ./cmd/csqtt-entware
+          python3 scripts/notices.py manager --binary dist/csqtt-entware --output dist/csqtt-entware-notices.tar.gz
+          python3 scripts/package.py --core dist/csqtt-client --manager dist/csqtt-entware --version "$VERSION"
+      - name: Verify exact tested payload and prepare installer assets
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,shutil
+          root=pathlib.Path('dist')
+          expected={'csqtt-client':os.environ['CORE_SHA256'],'csqtt-entware':os.environ['MANAGER_SHA256'],f"csqtt-entware_{os.environ['VERSION']}_mipsel-3.4.ipk":os.environ['PACKAGE_SHA256']}
+          for name,digest in expected.items():
+              assert hashlib.sha256((root/name).read_bytes()).hexdigest()==digest, f'{name} differs from tested candidate'
+          shutil.copyfile('scripts/install.sh',root/'install.sh')
+          (root/'install.sh.sha256').write_text(hashlib.sha256((root/'install.sh').read_bytes()).hexdigest()+'  install.sh\n')
+          (root/'candidate.json').write_text(json.dumps({'source_commit':os.environ['SOURCE'],'core_run_id':40938169686,'core_artifact_id':12925608602,'sha256':expected},indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: csqtt-entware-preview-candidate
+          path: |
+            dist/*.ipk
+            dist/*.ipk.sha256
+            dist/install.sh
+            dist/install.sh.sha256
+            dist/candidate.json
+          retention-days: 14

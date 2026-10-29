@@ -220,8 +220,27 @@ installable preview or qualified VPN release has been published.
   configurations; the Entware manager explicitly selects zero. Human takeover,
   one-use answers and unclaimed-challenge freshness retain their prior rules.
   Wire protocol, identity and VK/TLS authentication are unchanged. Focused Rust
-  tests were added and included in the emulated MIPS checks. Rust CI and the
-  paired native update are pending; Go host tests/vet passed.
+  tests were added and included in the emulated MIPS checks.
+- Core CI 40938169686 and Go/package CI 40938169681 passed at `89926ea`,
+  including the added host and emulated MIPS cases. The downloaded core artifact
+  was verified against GitHub's ZIP digest and its binary/notice checksums. The
+  paired IPK installed with the new server credential, UUID and WG keys retained;
+  both installed executable hashes and the explicit zero-attempt config matched.
+- A controlled native authorization subsequently completed without CAPTCHA and
+  obtained the server configuration. Its changed allocation correctly blocked
+  the bridge pending profile reimport. The administrator updated only the native
+  WG address and exported the matching profile, preserving its keys and policy.
+  All nine channels then connected; native WG DNS UDP/TCP and verified HTTPS
+  passed, with distinct provider/VPN exits. The sustained offboard test is running.
+- A bulk three-stream run was deliberately interrupted after the owner reported
+  Wi-Fi connectivity trouble elsewhere on the home network. All completed
+  transfers and panel samples had passed; the cause of that report is not
+  established. The owned relay was terminated and removed. This run is recorded
+  as interrupted, not as the requested full-duration pass. Lower-rate sustained
+  validation is now underway to limit shared-link pressure.
+- A separate read-only CI assembly workflow prepares installer assets from the
+  exact tested source/core artifact and rejects binary or package hash drift.
+  Its output is a development artifact; it does not create a release or tag.
 
 ## Ownership and handoff
 
@@ -231,11 +250,10 @@ installable preview or qualified VPN release has been published.
 
 ## Next
 
-The router's new server credential is configured, but authentication is stopped
-after VK's attempt-limit message. Validate and install the paired manual-first
-core/manager, then perform one controlled authorization and complete the native
-profile update if the server's allocation changed. Verify end-to-end traffic and
-complete the monitored stability run. Only one physical test device is available.
+The router is connected with its dedicated server credential and updated native
+profile. Complete the monitored stability run. A successful real human CAPTCHA
+result remains unverified, despite the tested transport and the actual VK page
+opening in Helper. Only one physical test device is available.
 Keep those limits
 explicit before deciding the first preview's qualification scope. Prepare the
 final versioned release and test its actual one-command download after its
