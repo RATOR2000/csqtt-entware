@@ -192,6 +192,11 @@ installable preview or qualified VPN release has been published.
   Unknown private error text is suppressed, and historical errors are hidden
   when the core becomes ready or a current CAPTCHA takes precedence. Host tests
   and vet passed, including the status redaction/precedence regression cases.
+- The corrected private IPK was reinstalled with settings and WG keys verified
+  unchanged; its installed manager hash matches the rebuilt payload. Go/package
+  CI 40931649419 passed at `87d62bb`. The live API now reports the allowlisted
+  timeout rather than claiming readiness. End-to-end traffic is still blocked
+  on restoring the configuration exchange; no preview release was published.
 
 ## Ownership and handoff
 
