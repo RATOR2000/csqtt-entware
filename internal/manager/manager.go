@@ -41,6 +41,9 @@ type coreStatus struct {
 		State     string `json:"state"`
 		ExpiresAt int64  `json:"expires_at"`
 	} `json:"captcha"`
+	Health struct {
+		LastSessionError string `json:"last_session_error"`
+	} `json:"health"`
 }
 type ProbeStatus struct {
 	State        string    `json:"state"`
@@ -424,6 +427,16 @@ func (m *Manager) Snapshot() PublicStatus {
 	s.BytesUp = m.core.BytesUp
 	s.BytesDown = m.core.BytesDown
 	s.CaptchaRequired = m.core.Captcha != nil
+	// Only fixed codes leave the private core status. VK authorization alone
+	// must not hide a missing CSQTT configuration response behind "connecting".
+	if m.cmd != nil && s.Error == "" && !s.CoreReady && !s.CaptchaRequired {
+		switch m.core.Health.LastSessionError {
+		case "handshake_timeout":
+			s.Error = "server_handshake_timeout"
+		case "handshake_rejected":
+			s.Error = "server_handshake_rejected"
+		}
+	}
 	if m.bridge != nil {
 		s.WireGuard = m.bridge.Status()
 		s.TunnelIP = m.bridgeIP

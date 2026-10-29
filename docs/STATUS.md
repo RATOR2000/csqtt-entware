@@ -161,13 +161,37 @@ installable preview or qualified VPN release has been published.
 - Both router SSH services authenticated with the previously pinned host keys;
   web management and the private LAN panel tunnel work. The native WG loopback
   endpoint, MTU, WG-only policy and absence of a global IPv6 path were rechecked.
-- Current authentication is waiting for a real VK CAPTCHA. Fresh native
+- At the restoration checkpoint authentication was waiting for a real VK CAPTCHA. Fresh native
   policy-routed DNS/HTTPS probes fail through VPN while provider HTTPS works.
   A local WG handshake is not being counted as Internet access. The owner must
-  complete the real Helper flow before reconnect/load qualification can resume.
+  complete a real Helper flow to qualify that path; a later authentication
+  attempt can also succeed automatically.
 - The GitHub connector retains repository write access; terminal Git reads
   work, but its local credential-manager login was lost during the reinstall.
   No credentials or private restoration files are committed.
+
+## Helper compatibility correction
+
+- The owner reported that the published Android Helper rejected the generated
+  pairing link before connecting. The integrated service advertised port 8443,
+  while that Helper's strict parser accepts only 9443. The LAN listener, pairing
+  link and documentation now consistently use 9443. The read-only OpenWrt
+  source and its published Helper were not modified.
+- A new service-level contract test checks the published Helper's URI fields,
+  port, token formats and expiry, then claims a challenge through real TLS with
+  the advertised certificate pin. It passed on the host and as a cross-compiled
+  test on the physical MIPS router. This does not claim a human CAPTCHA was
+  completed in the Android app.
+- Current VK authentication subsequently succeeds automatically. The remaining
+  failure is a missing CSQTT configuration response, reported by the unchanged
+  core as `handshake_timeout`; transport relay replies are present. Owner settings
+  still match the earlier successful native test. These observations do not
+  establish whether the fault is at the server or along the remote data path.
+- Public diagnostics now expose only fixed server-handshake failure enums,
+  instead of leaving a failed configuration exchange unexplained as connecting.
+  Unknown private error text is suppressed, and historical errors are hidden
+  when the core becomes ready or a current CAPTCHA takes precedence. Host tests
+  and vet passed, including the status redaction/precedence regression cases.
 
 ## Ownership and handoff
 
@@ -177,9 +201,10 @@ installable preview or qualified VPN release has been published.
 
 ## Next
 
-The installed candidate currently needs the owner's real VK CAPTCHA confirmation.
-Verify the Helper flow and restored end-to-end traffic, then complete the monitored
-stability run. Only one physical test device is available. Keep those limits
+The Helper link compatibility correction is implemented. Restore the CSQTT server
+configuration exchange and verify end-to-end traffic, then complete the monitored
+stability run and the real Helper flow when challenged. Only one physical test device
+is available. Keep those limits
 explicit before deciding the first preview's qualification scope. Prepare the
 final versioned release and test its actual one-command download after its
 acceptance gates pass. No public installable preview has been published.

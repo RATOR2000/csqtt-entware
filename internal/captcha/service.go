@@ -7,10 +7,12 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"strconv"
 	"sync"
 	"time"
 )
+
+// The published Android Helper rejects pairing links for any other port.
+const helperPort = "9443"
 
 // Service hosts the existing certificate-pinned Android Helper protocol only
 // while a human challenge is active. It shares the manager's Go runtime.
@@ -43,11 +45,11 @@ func (s *Service) Pair() (map[string]any, error) {
 		if host == nil || !host.IsPrivate() || host.To4() == nil {
 			return nil, errors.New("helper_requires_lan_address")
 		}
-		listener, err := s.listen("tcp4", net.JoinHostPort(s.host, "8443"))
+		listener, err := s.listen("tcp4", net.JoinHostPort(s.host, helperPort))
 		if err != nil {
 			return nil, errors.New("helper_port_unavailable")
 		}
-		b := &broker{host: s.host, port: "8443", pin: pin, core: s.core}
+		b := &broker{host: s.host, port: helperPort, pin: pin, core: s.core}
 		server := &http.Server{Handler: b, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, IdleTimeout: 15 * time.Second, MaxHeaderBytes: 8192, TLSConfig: &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12, NextProtos: []string{"http/1.1"}}}
 		ctx, cancel := context.WithCancel(context.Background())
 		s.broker = b
@@ -131,4 +133,4 @@ func (s *Service) Stop() {
 	s.stopLocked()
 }
 
-func (s *Service) Port() string { return strconv.Itoa(8443) }
+func (s *Service) Port() string { return helperPort }

@@ -12,7 +12,7 @@ func testService(t *testing.T, core func(object) (object, error)) *Service {
 	s := NewService("192.168.99.1", t.TempDir(), "unused-test-control-socket")
 	s.core = core
 	s.listen = func(network, requested string) (net.Listener, error) {
-		if network != "tcp4" || requested != "192.168.99.1:8443" {
+		if network != "tcp4" || requested != "192.168.99.1:9443" {
 			t.Errorf("helper listener escaped exact LAN authority: %s %s", network, requested)
 		}
 		return net.Listen("tcp4", "127.0.0.1:0")
