@@ -231,19 +231,29 @@ installable preview or qualified VPN release has been published.
   the bridge pending profile reimport. The administrator updated only the native
   WG address and exported the matching profile, preserving its keys and policy.
   All nine channels then connected; native WG DNS UDP/TCP and verified HTTPS
-  passed, with distinct provider/VPN exits. The sustained offboard test is running.
+  passed, with distinct provider/VPN exits.
 - A bulk three-stream run was deliberately interrupted after the owner reported
   Wi-Fi connectivity trouble elsewhere on the home network. All completed
   transfers and panel samples had passed; the cause of that report is not
   established. The owned relay was terminated and removed. This run is recorded
-  as interrupted, not as the requested full-duration pass. Lower-rate sustained
-  validation is now underway to limit shared-link pressure.
+  as interrupted, not as the requested full-duration pass.
+- A subsequent full-duration three-stream run passed with a downstream traffic
+  limit to reduce shared-link pressure. Every completed certificate-verified
+  transfer and panel sample passed; owned process identities stayed stable,
+  the available-memory margin was retained and no kernel OOM report was found.
+  The temporary relay and staging files were removed. Post-load idle samples
+  retained all nine channels; native WG DNS UDP/TCP and verified HTTPS passed
+  again with distinct provider/VPN exits. This is bounded synthetic testing,
+  rather than three-physical-device or long-term qualification. Exact resource
+  captures, CPU samples and timings remain private.
 - A separate read-only CI assembly workflow prepares installer assets from the
   exact tested source/core artifact and rejects binary or package hash drift.
   Its output is a development artifact; it does not create a release or tag.
   Assembly CI 40943525633 passed at `efaf6a6`, reproducing the exact installed
   IPK. A separate workflow prepares an unpublished release draft from that
   artifact, with pending qualification limits stated in its notes.
+  Draft preparation CI 40945095005 passed at `f9847ce`; its IPK asset digest
+  matches the tested payload. No installable release has been published.
 
 ## Ownership and handoff
 
@@ -254,11 +264,12 @@ installable preview or qualified VPN release has been published.
 ## Next
 
 The router is connected with its dedicated server credential and updated native
-profile. Complete the monitored stability run. A successful real human CAPTCHA
-result remains unverified, despite the tested transport and the actual VK page
-opening in Helper. Only one physical test device is available.
-Keep those limits
-explicit before deciding the first preview's qualification scope. Prepare the
-final versioned release and test its actual one-command download after its
-acceptance gates pass. No public installable preview has been published.
+profile. The paired build, native end-to-end probes and bounded sustained run
+have passed. A successful real human CAPTCHA result remains unverified, despite
+the tested transport and the actual VK page opening in Helper. Only one physical
+test device is available. Keep those limits explicit when deciding the first
+preview's qualification scope. The exact installer payload is ready in an
+unpublished draft. Publish only after the remaining gate passes or the owner
+explicitly changes the agreed preview scope; then test its actual one-command
+download. No public installable preview has been published.
 
