@@ -241,6 +241,9 @@ installable preview or qualified VPN release has been published.
 - A separate read-only CI assembly workflow prepares installer assets from the
   exact tested source/core artifact and rejects binary or package hash drift.
   Its output is a development artifact; it does not create a release or tag.
+  Assembly CI 40943525633 passed at `efaf6a6`, reproducing the exact installed
+  IPK. A separate workflow prepares an unpublished release draft from that
+  artifact, with pending qualification limits stated in its notes.
 
 ## Ownership and handoff
 

@@ -1,0 +1,48 @@
+name: Prepare private preview draft
+on:
+  push:
+    paths:
+      - '.github/workflows/draft-preview.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  draft:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: csqtt-entware-preview-candidate
+          run-id: 40943525633
+          github-token: ${{ github.token }}
+          path: candidate
+      - name: Verify the tested installer payload
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          root=pathlib.Path('candidate')
+          manifest=json.loads((root/'candidate.json').read_text())
+          assert manifest['source_commit']=='89926ea2310049dd42930781d786a5fdee27493c'
+          package='csqtt-entware_0.1.0-preview.1_mipsel-3.4.ipk'
+          assert hashlib.sha256((root/package).read_bytes()).hexdigest()=='dc3e59491cc118d6f1672759882eeba3a5c86f292f3c069f156b61aef6c79307'
+          for name in (package,'install.sh'):
+              checksum=(root/(name+'.sha256')).read_text().split()
+              assert len(checksum)==2 and checksum[1]==name
+              assert hashlib.sha256((root/name).read_bytes()).hexdigest()==checksum[0]
+          assert (root/'install.sh').read_bytes()==pathlib.Path('scripts/install.sh').read_bytes()
+          PY
+      - name: Create or update the unpublished draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag='v0.1.0-preview.1'
+          if gh release view "$tag" --json isDraft --jq .isDraft > .work-release-state 2>/dev/null; then
+            test "$(cat .work-release-state)" = true
+            gh release edit "$tag" --draft=true --prerelease --notes-file docs/RELEASE-PREVIEW.md
+            gh release upload "$tag" candidate/*.ipk candidate/*.ipk.sha256 candidate/install.sh candidate/install.sh.sha256 candidate/candidate.json --clobber
+          else
+            gh release create "$tag" --draft --prerelease --target 89926ea2310049dd42930781d786a5fdee27493c --title 'CSQTT Entware 0.1.0-preview.1' --notes-file docs/RELEASE-PREVIEW.md candidate/*.ipk candidate/*.ipk.sha256 candidate/install.sh candidate/install.sh.sha256 candidate/candidate.json
+          fi
