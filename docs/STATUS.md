@@ -132,6 +132,42 @@ installable preview or qualified VPN release has been published.
 - USB reattachment automatically restarted Entware/CSQTT with nine channels.
   Persistent settings, WG keys and UUID were verified unchanged; native WG DNS
   UDP/TCP and verified HTTPS passed again. The RAM probe was removed afterward.
+- Dependency notices now cover the locked Rust crates, Rust and Go runtimes,
+  manager dependencies and required PATENTS files. Packaging requires both
+  binary-bound notice bundles and validates their files, hashes and locked
+  inputs. The published-crate license gap has an exact upstream revision and
+  checked-in supplement; SPDX labels alone are not used as license text.
+- Core CI 40730577195 at `8a5fdb5` and Go/package CI 40731064893 at `37ae27f`
+  passed. The final local preview candidate includes the full notices and was
+  reinstalled on the router with owner settings and keys preserved. This is a
+  private development candidate, not a published installable release.
+- A three-stream HTTPS smoke test moved certificate verification and TLS onto
+  the host while the temporary router relay retained the native VPN policy and
+  CSQTT packet path. All three bounded transfers passed without retries, and
+  the relay was removed. The saved report is one round, not the planned
+  fifteen-minute monitored stability run. An earlier longer attempt containing
+  a TLS reset remains a failed test and is not counted as acceptance.
+
+## Restoration checkpoint
+
+- After the development host's Windows reinstall, Git object verification,
+  Go host tests/vet and Python packaging/bootstrap/notice tests passed again.
+  The Windows-only symlink fixture is still skipped. Linux race/lifecycle and
+  MIPS checks remain CI evidence, rather than new native-host checks.
+- Restored artifact checksums and binary-bound notice inventories match. The
+  private IPK is reproducible byte-for-byte from the restored binaries,
+  notices and current packaging inputs. Installed router executables match
+  these restored builds.
+- Both router SSH services authenticated with the previously pinned host keys;
+  web management and the private LAN panel tunnel work. The native WG loopback
+  endpoint, MTU, WG-only policy and absence of a global IPv6 path were rechecked.
+- Current authentication is waiting for a real VK CAPTCHA. Fresh native
+  policy-routed DNS/HTTPS probes fail through VPN while provider HTTPS works.
+  A local WG handshake is not being counted as Internet access. The owner must
+  complete the real Helper flow before reconnect/load qualification can resume.
+- The GitHub connector retains repository write access; terminal Git reads
+  work, but its local credential-manager login was lost during the reinstall.
+  No credentials or private restoration files are committed.
 
 ## Ownership and handoff
 
@@ -141,8 +177,10 @@ installable preview or qualified VPN release has been published.
 
 ## Next
 
-The working normal candidate is connected. Longer stability and a real CAPTCHA
-remain unverified; only one physical test device is available. Keep those limits
+The installed candidate currently needs the owner's real VK CAPTCHA confirmation.
+Verify the Helper flow and restored end-to-end traffic, then complete the monitored
+stability run. Only one physical test device is available. Keep those limits
 explicit before deciding the first preview's qualification scope. Prepare the
 final versioned release and test its actual one-command download after its
 acceptance gates pass. No public installable preview has been published.
+
