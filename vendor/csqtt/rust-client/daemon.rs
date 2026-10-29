@@ -64,6 +64,7 @@ pub struct Config {
     pub control_socket: PathBuf,
     pub identity_file: PathBuf,
     pub captcha_timeout_secs: u64,
+    pub captcha_auto_attempts: usize,
 }
 
 impl Default for Config {
@@ -81,6 +82,7 @@ impl Default for Config {
             status_file: "/opt/var/run/csqtt/status.json".into(),
             control_socket: "/opt/var/run/csqtt/control.sock".into(),
             identity_file: "/opt/etc/csqtt/identity.json".into(), captcha_timeout_secs: 180,
+            captcha_auto_attempts: 3,
         }
     }
 }
@@ -124,6 +126,7 @@ impl Config {
             bail!("invalid TURN override");
         }
         if !(30..=600).contains(&self.captcha_timeout_secs) { bail!("invalid CAPTCHA timeout"); }
+        if self.captcha_auto_attempts > 3 { bail!("invalid CAPTCHA automatic attempt count"); }
         crate::linux_tun::validate_name(&self.tun_device)?;
         for path in [&self.tun_config_hook, &self.status_file, &self.control_socket, &self.identity_file] {
             if !path.is_absolute() || path.components().any(|p| p == std::path::Component::ParentDir) {
@@ -834,6 +837,21 @@ mod tests {
         let mut config=valid(); config.vk_hashes.push(config.vk_hashes[0].clone()); assert!(config.validate().is_err());
         let mut config=valid(); config.peer="user@host:443".into(); assert!(config.validate().is_err());
         let mut config=valid(); config.peer="[2001:db8::1]:46000".into(); assert!(config.validate().is_ok());
+    }
+    #[test]
+    fn captcha_auto_attempts_default_and_bounds() {
+        assert_eq!(Config::default().captcha_auto_attempts, 3);
+        assert_eq!(serde_json::from_str::<Config>("{}").unwrap().captcha_auto_attempts, 3);
+        for attempts in 0..=3 {
+            let mut config=valid(); config.captcha_auto_attempts=attempts;
+            assert!(config.validate().is_ok());
+        }
+        let mut config=valid(); config.captcha_auto_attempts=4;
+        assert!(config.validate().is_err());
+        for invalid in [r#"{"captcha_auto_attempts":-1}"#, r#"{"captcha_auto_attempts":1.5}"#, r#"{"captcha_auto_attempts":"0"}"#] {
+            assert!(serde_json::from_str::<Config>(invalid).is_err());
+        }
+        assert_eq!(serde_json::from_str::<Config>(r#"{"captcha_auto_attempts":0}"#).unwrap().captcha_auto_attempts, 0);
     }
     #[test]
     fn packet_endpoints_are_fixed_local_and_distinct() {

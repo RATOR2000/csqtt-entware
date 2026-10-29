@@ -88,6 +88,10 @@ PY
   for test_name in \
     entropy::tests::operating_system_entropy_and_uuid_are_available \
     daemon::tests::persistent_identity_survives_restart_and_locks_parallel_instances \
+    daemon::tests::captcha_auto_attempts_default_and_bounds \
+    captcha::tests::daemon_manual_first_skips_auto_and_keeps_answer_before_wait \
+    captcha::tests::daemon_manual_first_retains_unclaimed_fresh_auth_deadline \
+    captcha::tests::daemon_automatic_attempts_still_deliver_success \
     atomic::tests::portable_generations_cross_32_bits_under_contention \
     wrap::tests::known_wire_vector \
     obfs::tests::unwraps_go_audio_and_video_vectors; do

@@ -198,6 +198,31 @@ installable preview or qualified VPN release has been published.
   timeout rather than claiming readiness. End-to-end traffic is still blocked
   on restoring the configuration exchange; no preview release was published.
 
+## Server credential recovery and CAPTCHA attempts
+
+- Owner-authorized read-only server inspection confirmed that the former router
+  credential was absent from the current server database. The server received
+  the setup packets but could not decrypt/accept them. Its current main
+  credential is bound to another device. A dedicated router access was created
+  through the existing administrative API; the router's saved password was
+  updated while preserving its UUID, WG keys and VK link. The server process
+  was not restarted and existing access entries were retained.
+- The live Helper path passed pairing-format, pinned TLS, challenge claim,
+  authenticated CONNECT and certificate-verified VK HTTPS checks on the router.
+  The owner then opened the actual VK page in Android Helper, which reported
+  an exhausted attempt limit. No successful human result is claimed.
+- Retry activity on the router was stopped after that report. Source review
+  found three automatic CAPTCHA attempts before human fallback on the same
+  challenge. This can consume the human's attempt budget; it does not establish
+  that every VK limit is caused by this behavior.
+- A daemon-local `captcha_auto_attempts` option now supports zero attempts for
+  direct human confirmation. Its default remains three for existing daemon
+  configurations; the Entware manager explicitly selects zero. Human takeover,
+  one-use answers and unclaimed-challenge freshness retain their prior rules.
+  Wire protocol, identity and VK/TLS authentication are unchanged. Focused Rust
+  tests were added and included in the emulated MIPS checks. Rust CI and the
+  paired native update are pending; Go host tests/vet passed.
+
 ## Ownership and handoff
 
 - Root: integration, router/UI checks and STATUS.
@@ -206,10 +231,12 @@ installable preview or qualified VPN release has been published.
 
 ## Next
 
-The Helper link compatibility correction is implemented. Restore the CSQTT server
-configuration exchange and verify end-to-end traffic, then complete the monitored
-stability run and the real Helper flow when challenged. Only one physical test device
-is available. Keep those limits
+The router's new server credential is configured, but authentication is stopped
+after VK's attempt-limit message. Validate and install the paired manual-first
+core/manager, then perform one controlled authorization and complete the native
+profile update if the server's allocation changed. Verify end-to-end traffic and
+complete the monitored stability run. Only one physical test device is available.
+Keep those limits
 explicit before deciding the first preview's qualification scope. Prepare the
 final versioned release and test its actual one-command download after its
 acceptance gates pass. No public installable preview has been published.

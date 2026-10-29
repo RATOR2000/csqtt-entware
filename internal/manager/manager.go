@@ -202,6 +202,9 @@ func (m *Manager) startCoreLocked(resetBudget bool) error {
 		return errors.New("Остановлено после трёх неудачных запусков. Проверьте диагностику")
 	}
 	conf := map[string]any{"peer": m.settings.Peer, "password": m.settings.Password, "vk_hashes": []string{m.settings.VKLink}, "workers": 9, "packet_adapter": "udp", "packet_listen": "127.0.0.1:39000", "packet_peer": "127.0.0.1:39001", "status_file": filepath.Join(m.opts.RuntimeDir, "status.json"), "control_socket": filepath.Join(m.opts.RuntimeDir, "control.sock"), "identity_file": filepath.Join(filepath.Dir(m.opts.ConfigPath), "identity.json")}
+	// Leave a fresh challenge for the owner instead of spending VK's limited
+	// CAPTCHA answers on automatic attempts before the Helper opens it.
+	conf["captcha_auto_attempts"] = 0
 	path := filepath.Join(m.opts.RuntimeDir, "client.json")
 	if err := atomicJSON(path, conf); err != nil {
 		m.lastError = "private_config_failed"

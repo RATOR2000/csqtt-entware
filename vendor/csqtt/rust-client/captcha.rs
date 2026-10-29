@@ -401,29 +401,48 @@ impl CaptchaSolver {
         if captcha.redirect_uri.is_empty() || captcha.session_token.is_empty() {
             bail!("captcha data is incomplete");
         }
-        let timeout = Duration::from_secs(crate::daemon::current()
-            .map_or(180, |runtime| runtime.config.captcha_timeout_secs));
+        let (timeout_secs, auto_attempts) = crate::daemon::current()
+            .map_or((180, 3), |runtime| (runtime.config.captcha_timeout_secs, runtime.config.captcha_auto_attempts));
+        let timeout = Duration::from_secs(timeout_secs);
         let (id, auto_cancel, receive, deadline) = self.begin_daemon_challenge(captcha, timeout);
         let _guard = ChallengeGuard { solver: self, id: id.clone() };
         let retry_at = tokio::time::Instant::now() + FRESH_AUTH_INTERVAL;
-        let automatic = tokio::select! {
-            biased;
-            _ = self.cancel.cancelled() => bail!("captcha cancelled"),
-            _ = tokio::time::sleep_until(deadline) => bail!("captcha expired"),
-            _ = tokio::time::sleep_until(retry_at) => None,
-            _ = auto_cancel.cancelled() => None,
-            result = self.solve_attempts_with_cancel(client, profile, saved_profile, captcha, 3, &auto_cancel) => Some(result),
-        };
-        match automatic {
-            Some(Ok(token)) if self.finish_daemon_auto(&id) => return Ok(token),
-            Some(Err(_)) => { self.manual_available(&id); }
-            _ => {},
+        let automatic = self.solve_attempts_with_cancel(client, profile, saved_profile, captcha, auto_attempts, &auto_cancel);
+        if let Some(token) = self.daemon_auto_or_manual(&id, auto_attempts, &auto_cancel, deadline, retry_at, automatic).await? {
+            return Ok(token);
         }
         network.suspend();
         let result = self.wait_daemon_answer(&id, receive, deadline, retry_at).await;
         // No HTTP continuation runs concurrently with another automatic auth.
         if result.is_ok() { network.acquire().await?; }
         result
+    }
+
+    async fn daemon_auto_or_manual<F>(&self, id: &str, attempts: usize,
+        auto_cancel: &CancellationToken, deadline: tokio::time::Instant,
+        retry_at: tokio::time::Instant, automatic: F) -> Result<Option<String>>
+    where F: std::future::Future<Output = Result<String>>
+    {
+        // Leave the challenge untouched for the Helper: do not poll an
+        // automatic future that can send requests before human takeover.
+        if attempts == 0 {
+            self.manual_available(id);
+            return Ok(None);
+        }
+        let automatic = tokio::select! {
+            biased;
+            _ = self.cancel.cancelled() => bail!("captcha cancelled"),
+            _ = tokio::time::sleep_until(deadline) => bail!("captcha expired"),
+            _ = tokio::time::sleep_until(retry_at) => None,
+            _ = auto_cancel.cancelled() => None,
+            result = automatic => Some(result),
+        };
+        match automatic {
+            Some(Ok(token)) if self.finish_daemon_auto(id) => return Ok(Some(token)),
+            Some(Err(_)) => { self.manual_available(id); }
+            _ => {},
+        }
+        Ok(None)
     }
 
     async fn wait_daemon_answer(&self, id: &str,
@@ -1338,6 +1357,58 @@ mod tests {
     fn daemon_fixture() -> VkCaptchaError {
         VkCaptchaError::from_json(&serde_json::json!({"error_code":14,
             "redirect_uri":"https://id.vk.com/captcha?session_token=private-session"})).unwrap()
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn daemon_manual_first_skips_auto_and_keeps_answer_before_wait() {
+        let solver=CaptchaSolver::new("auto",CancellationToken::new());
+        let (id,auto_cancel,receive,deadline)=solver.begin_daemon_challenge(&daemon_fixture(),Duration::from_secs(180));
+        let retry_at=tokio::time::Instant::now()+FRESH_AUTH_INTERVAL;
+        let attempted=std::sync::atomic::AtomicBool::new(false);
+        let automatic=async {
+            attempted.store(true,std::sync::atomic::Ordering::SeqCst);
+            Ok("unexpected-auto-token".into())
+        };
+        assert!(solver.daemon_auto_or_manual(&id,0,&auto_cancel,deadline,retry_at,automatic).await.unwrap().is_none());
+        assert!(!attempted.load(std::sync::atomic::Ordering::SeqCst));
+        assert!(auto_cancel.is_cancelled());
+        let challenge=solver.daemon_challenge().unwrap();
+        assert_eq!(challenge["state"],"manual");
+        assert_eq!(challenge["human_active"],false);
+        assert!(!solver.daemon_answer(&id,Ok("unclaimed-token".into())));
+        assert!(solver.daemon_takeover(&id));
+        assert!(solver.daemon_answer(&id,Ok("human-token".into())));
+        // The human may finish before the solver starts waiting, including
+        // before the unclaimed retry timer is observed.
+        tokio::time::advance(FRESH_AUTH_INTERVAL+Duration::from_secs(1)).await;
+        assert_eq!(solver.wait_daemon_answer(&id,receive,deadline,retry_at).await.unwrap(),"human-token");
+        assert!(!solver.daemon_answer(&id,Ok("duplicate".into())));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn daemon_manual_first_retains_unclaimed_fresh_auth_deadline() {
+        let solver=CaptchaSolver::new("auto",CancellationToken::new());
+        let (id,auto_cancel,receive,deadline)=solver.begin_daemon_challenge(&daemon_fixture(),Duration::from_secs(180));
+        let started=tokio::time::Instant::now();
+        let retry_at=started+FRESH_AUTH_INTERVAL;
+        let automatic=async { Ok("unexpected-auto-token".into()) };
+        assert!(solver.daemon_auto_or_manual(&id,0,&auto_cancel,deadline,retry_at,automatic).await.unwrap().is_none());
+        let result=solver.wait_daemon_answer(&id,receive,deadline,retry_at).await.unwrap_err();
+        assert!(result.downcast_ref::<FreshAuthRequired>().is_some());
+        assert_eq!(started.elapsed(),FRESH_AUTH_INTERVAL);
+        assert!(solver.daemon_challenge().is_none());
+        assert!(!solver.daemon_takeover(&id));
+        assert!(!solver.daemon_answer(&id,Ok("late-token".into())));
+    }
+
+    #[tokio::test]
+    async fn daemon_automatic_attempts_still_deliver_success() {
+        let solver=CaptchaSolver::new("auto",CancellationToken::new());
+        let (id,auto_cancel,receive,deadline)=solver.begin_daemon_challenge(&daemon_fixture(),Duration::from_secs(180));
+        let automatic=async { Ok("auto-token".into()) };
+        assert_eq!(solver.daemon_auto_or_manual(&id,3,&auto_cancel,deadline,tokio::time::Instant::now()+FRESH_AUTH_INTERVAL,automatic).await.unwrap(),Some("auto-token".into()));
+        assert!(solver.daemon_challenge().is_none());
+        assert!(receive.await.is_err());
     }
 
     #[tokio::test]

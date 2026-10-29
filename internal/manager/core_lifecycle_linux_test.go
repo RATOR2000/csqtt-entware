@@ -4,6 +4,7 @@ package manager
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"os"
 	"path/filepath"
@@ -61,6 +62,13 @@ func TestCoreLifecycleKeepsCredentialsOutOfArgumentsAndStopsOwnedProcess(t *test
 	info, err := os.Stat(m.cmd.Args[2])
 	if err != nil || info.Mode().Perm() != 0600 {
 		t.Fatalf("core private configuration is not mode 0600: %v", err)
+	}
+	raw, err := os.ReadFile(m.cmd.Args[2])
+	var config struct {
+		CaptchaAutoAttempts *int `json:"captcha_auto_attempts"`
+	}
+	if err != nil || json.Unmarshal(raw, &config) != nil || config.CaptchaAutoAttempts == nil || *config.CaptchaAutoAttempts != 0 {
+		t.Fatal("managed core must explicitly preserve CAPTCHA attempts for the Helper")
 	}
 	done := m.done
 	if err := m.Disconnect(); err != nil {
