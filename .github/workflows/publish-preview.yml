@@ -1,0 +1,56 @@
+name: Publish approved limited preview
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/publish-preview.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: publish-preview-1
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify the exact approved draft and payload
+        run: |
+          gh api repos/RATOR2000/csqtt-entware/releases/428335785 > release.json
+          python3 - <<'PY'
+          import json
+          r=json.load(open('release.json'))
+          assert r['id']==428335785
+          assert r['tag_name']=='v0.1.0-preview.1' and r['prerelease'] is True
+          assert r['target_commitish']=='89926ea2310049dd42930781d786a5fdee27493c'
+          expected={
+              'candidate.json':'75addca32454bbe332e7dccf828a6cacd0762f16eae28eba20591e17e36badc4',
+              'csqtt-entware_0.1.0-preview.1_mipsel-3.4.ipk':'dc3e59491cc118d6f1672759882eeba3a5c86f292f3c069f156b61aef6c79307',
+              'csqtt-entware_0.1.0-preview.1_mipsel-3.4.ipk.sha256':'f2a8c0693e568d4c762114087cea73f5932f3f07801ad469bbcd304bdff6595c',
+              'install.sh':'27e3f18c9e5c8cfea10c4f5abe9297c79ecbcd00d766b658626579e5a13a71f1',
+              'install.sh.sha256':'9fbe75bd0816a8c5c055c444705277da8a2d6a7dba3c5fec87d0f9adac97b39e',
+          }
+          assert {a['name']:a['digest'] for a in r['assets']}=={n:'sha256:'+h for n,h in expected.items()}
+          json.dump(expected,open('expected.json','w'))
+          PY
+          gh release download v0.1.0-preview.1 --dir payload
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          expected=json.load(open('expected.json'))
+          root=pathlib.Path('payload')
+          assert {p.name for p in root.iterdir()}==set(expected)
+          for name,digest in expected.items():
+              assert hashlib.sha256((root/name).read_bytes()).hexdigest()==digest, name
+          assert json.loads((root/'candidate.json').read_text())['source_commit']=='89926ea2310049dd42930781d786a5fdee27493c'
+          PY
+      - name: Publish the owner-approved limited preview
+        run: |
+          # Owner explicitly approved this scope: human CAPTCHA return and
+          # three physical clients remain unqualified, as stated in the notes.
+          if test "$(python3 -c "import json; print(json.load(open('release.json'))['draft'])")" = True; then
+            gh release edit v0.1.0-preview.1 --draft=false --prerelease --latest=false --notes-file docs/RELEASE-PREVIEW.md
+          fi
+          gh release view v0.1.0-preview.1 --json isDraft,isPrerelease,url
