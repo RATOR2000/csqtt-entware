@@ -4,7 +4,9 @@
 Штатный WireGuard-клиент Keenetic подключается к мосту на этом же роутере;
 устройства для VPN выбираются в штатной политике доступа Keenetic.
 
-**Проект находится в разработке. Установочный preview пока не опубликован.**
+**Доступен ограниченный [preview v0.1.0-preview.1](https://github.com/RATOR2000/csqtt-entware/releases/tag/v0.1.0-preview.1).**
+Успешный возврат ответа CAPTCHA из Helper ещё не подтверждён. Проверены один
+физический клиент и синтетические параллельные потоки; гарантии скорости нет.
 Состояние сборок, проверок и следующий шаг записаны в [STATUS](docs/STATUS.md).
 Наличие исходников или готового файла не означает прохождение приёмки на роутере.
 
@@ -50,8 +52,9 @@
 
 На физическом KN-1710 с KeeneticOS 3.8.7 проверены импорт loopback endpoint,
 локальный handshake и двусторонние тестовые ICMP-пакеты размером 1280 байт.
-Это проверка локального моста; реальный VPN остаётся отдельным этапом
-[приёмки](docs/ACCEPTANCE.md).
+Отдельно проверены реальные CSQTT-каналы, DNS UDP/TCP и HTTPS через нативную
+политику, включая выход одного LAN-клиента. Границы проверки описаны в
+[STATUS](docs/STATUS.md) и [приёмке](docs/ACCEPTANCE.md).
 
 ### DNS и IPv6
 
@@ -79,15 +82,13 @@ Android Helper. HTTPS-брокер запускается внутри той ж
 из исходного проекта, не APK-пакеты OpenWrt. SHA-256 Android-файла:
 `01d837fef92239db28951f7ce60f5a26eb77c1c33236e8bb188d4a84e7c4d8d4`.
 
-## Установка одной командой после публикации
+## Установка одной командой
 
-**Установочный релиз ещё не опубликован; ниже только шаблон будущей команды.**
-После прохождения [приёмки](docs/ACCEPTANCE.md) замените `PUBLISHED_RELEASE_TAG`
-точным опубликованным тегом вида `vВЕРСИЯ`. Команда выполняется в Entware от root
+Команда устанавливает ограниченный preview **v0.1.0-preview.1** в Entware от root
 и устанавливает `wget-ssl` и CA-сертификаты. `main` и `latest` не используются.
 
 ```sh
-(set -eu; umask 077; tag='PUBLISHED_RELEASE_TAG'; /opt/bin/opkg update; /opt/bin/opkg install wget-ssl ca-bundle; stage=$(mktemp -d /tmp/csqtt-loader.XXXXXX); trap 'rm -rf "$stage"' 0; trap 'exit 1' HUP INT TERM; (ulimit -f 128; /opt/bin/wget --no-config --no-netrc --no-proxy --no-hsts --check-certificate --ca-certificate=/opt/etc/ssl/certs/ca-certificates.crt --max-redirect=0 --timeout=20 --tries=2 -qO "$stage/bootstrap.sh" "https://raw.githubusercontent.com/RATOR2000/csqtt-entware/refs/tags/$tag/scripts/bootstrap.sh") && sh "$stage/bootstrap.sh" "$tag")
+(set -eu; umask 077; tag='v0.1.0-preview.1'; /opt/bin/opkg update; /opt/bin/opkg install wget-ssl ca-bundle; stage=$(mktemp -d /tmp/csqtt-loader.XXXXXX); trap 'rm -rf "$stage"' 0; trap 'exit 1' HUP INT TERM; (ulimit -f 128; /opt/bin/wget --no-config --no-netrc --no-proxy --no-hsts --check-certificate --ca-certificate=/opt/etc/ssl/certs/ca-certificates.crt --max-redirect=0 --timeout=20 --tries=2 -qO "$stage/bootstrap.sh" "https://raw.githubusercontent.com/RATOR2000/csqtt-entware/refs/tags/$tag/scripts/bootstrap.sh") && sh "$stage/bootstrap.sh" "$tag")
 ```
 
 Загрузчик получает версионный IPK, `install.sh` и их отдельные `.sha256` из
@@ -95,12 +96,15 @@ Android Helper. HTTPS-брокер запускается внутри той ж
 контрольные суммы, работает в закрытом каталоге RAM и удаляет его при завершении.
 Установщик сохраняет настройки и ключи при обновлении. Контрольные суммы
 подтверждают целостность; доверие к публикации обеспечивается HTTPS GitHub.
-До публикации используется следующий локальный способ для разработчика.
+Эта команда проверена на физическом KN-1710: публичная загрузка, переустановка
+той же версии, сохранение настроек/UUID/ключей и последующие DNS/HTTPS через VPN.
+Повторная установка восстанавливает файлы программы той же версии с сохранением
+настроек, UUID и WG-ключей. Служба CSQTT при этом кратко перезапускается.
 
 ## Установка кандидата разработчиком
 
-До опубликованного preview используется явный локальный IPK и его контрольная
-сумма. Соберите кандидат по [BUILD](docs/BUILD.md), перенесите пакет и
+Для проверки сборок используется явный локальный IPK и его контрольная сумма.
+Соберите кандидат по [BUILD](docs/BUILD.md), перенесите пакет и
 `scripts/install.sh` на USB роутера и сначала выполните проверку:
 
 ```sh

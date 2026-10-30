@@ -1,7 +1,8 @@
 # Development status
 
-Development candidate implemented and installed on the target. No public
-installable preview or qualified VPN release has been published.
+Limited public `v0.1.0-preview.1` is published and installed on the target.
+The owner explicitly approved publication with the remaining human CAPTCHA
+return and three-physical-client qualification limits stated in the release.
 
 ## Agreed behavior
 
@@ -255,6 +256,30 @@ installable preview or qualified VPN release has been published.
   Draft preparation CI 40945095005 passed at `f9847ce`; its IPK asset digest
   matches the tested payload. No installable release has been published.
 
+## Published limited preview
+
+- The owner explicitly approved publishing the limited preview with the human
+  CAPTCHA return and three-physical-client qualification gaps stated publicly.
+  Publication CI 41069123514 passed at `2868b66`: it checked the exact draft,
+  all five asset digests and downloaded payload hashes before publication.
+- Public release `v0.1.0-preview.1` points to the tested source `89926ea` and
+  retains the exact installed IPK. The release is marked prerelease; no stable
+  qualification or speed guarantee is implied.
+- The documented explicit-tag command was executed through Entware SSH on the
+  physical router. It fetched the public tagged bootstrap and release assets,
+  verified checksums and force-reinstalled the same version successfully.
+  Settings, credentials, persistent UUID, WG keys and native WG/policy/DNS
+  configuration were checked unchanged; both installed binary hashes match.
+- The managed core retained manual-first CAPTCHA configuration and recovered
+  nine transport channels without a CAPTCHA. An initial probe preceded native
+  WG session recovery; subsequent native DNS UDP/TCP and certificate-verified
+  HTTPS passed through CSQTT. The independent provider probe required a fixture
+  correction: its resolver must not use the DNS address routed only to WG.
+  With that diagnostic corrected, provider HTTPS passed with a distinct exit.
+- Native SSH authenticated with its pinned host key and confirmed unchanged
+  KeeneticOS 3.8.7. Entware SSH, native web management and the tunneled LAN panel
+  remain available. Exact private reports and the panel proof stay in `.work/`.
+
 ## Ownership and handoff
 
 - Root: integration, router/UI checks and STATUS.
@@ -263,13 +288,9 @@ installable preview or qualified VPN release has been published.
 
 ## Next
 
-The router is connected with its dedicated server credential and updated native
-profile. The paired build, native end-to-end probes and bounded sustained run
-have passed. A successful real human CAPTCHA result remains unverified, despite
-the tested transport and the actual VK page opening in Helper. Only one physical
-test device is available. Keep those limits explicit when deciding the first
-preview's qualification scope. The exact installer payload is ready in an
-unpublished draft. Publish only after the remaining gate passes or the owner
-explicitly changes the agreed preview scope; then test its actual one-command
-download. No public installable preview has been published.
+The limited preview is public, and its real one-command reinstall plus native
+DNS/HTTPS verification have passed. Keep this preview's scope explicit:
+successful human CAPTCHA return and three physical clients remain unqualified.
+Verify a fresh real Helper result when VK naturally requests one; do not force
+repeated challenges or consume the owner's remaining attempts for qualification.
 
