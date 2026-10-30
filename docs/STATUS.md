@@ -280,6 +280,22 @@ return and three-physical-client qualification limits stated in the release.
   KeeneticOS 3.8.7. Entware SSH, native web management and the tunneled LAN panel
   remain available. Exact private reports and the panel proof stay in `.work/`.
 
+## User setup guide
+
+- `docs/SETUP.md` now provides a Russian step-by-step path from Entware SSH
+  through installation, panel settings, ISP, native WG, DNS and device policy
+  assignment to end-to-end and ordinary-stop verification. README links to it
+  prominently and provides a numbered navigation table.
+- The guide separates installer-owned components from manually configured
+  Keenetic components, explains the optional existing DSL connection and
+  distinguishes repeating the installer from resetting Keenetic or replacing
+  USB. The command is the same public bootstrap already tested on the router.
+- Navigation and field names were checked read-only in the actual 3.8 web UI.
+  Local documentation links/anchors passed; both installation snippets match
+  the command already executed successfully on the physical router.
+  This documentation change does not change the release payload, router
+  configuration or qualification limits.
+
 ## Ownership and handoff
 
 - Root: integration, router/UI checks and STATUS.
